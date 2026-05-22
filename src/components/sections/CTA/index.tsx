@@ -14,9 +14,9 @@ export default component$(() => {
               Crie sua conta para melhor ter mais acesso do que é a nossa experiencia.
             </p>
 
-            <button class="px-10 py-4 bg-cyan-500 hover:bg-cyan-400 transition rounded-xl font-semibold text-slate-950">
+            <Button variant="secondary">
               Criar conta
-            </button>
+            </Button>
           </div>
         </div>
       </section>

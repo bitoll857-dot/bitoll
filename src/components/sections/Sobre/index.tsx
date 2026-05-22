@@ -1,5 +1,4 @@
 import { component$ } from "@builder.io/qwik";
-import Button from "~/components/ui/Button";
 
 export default component$(() => {
   return (
