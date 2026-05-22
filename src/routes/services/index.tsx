@@ -1,29 +1,18 @@
 import { component$ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import Navbar from "~/components/navigation/Navbar";
-import Hero from "~/components/sections/Hero";
-import NossosServicos from "~/components/sections/NossosServicos"
-import Sobre from "~/components/sections/Sobre"
-import CTA from "~/components/sections/CTA"
+import NossosServicosPage from "~/components/sections/NossosServicosPage"
 import Footer from "~/components/sections/Footer"
 
 export default component$(() => {
   return (
     <>
     <Navbar />
-    <div class="min-h-screen bg-slate-950 text-white">
-      {/* HERO SECTION */}
-      <Hero />
+    <div class="min-h-screen bg-slate-950 text-white py-24">
 
       {/* SERVICES */}
-      <NossosServicos />
-
-      {/* ABOUT */}
-      <Sobre />
-
-      {/* CTA All to action */}
-      <CTA />
-
+      <NossosServicosPage />
+      
       {/* FOOTER */}
       <Footer />
       
