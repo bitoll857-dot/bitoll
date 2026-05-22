@@ -28,7 +28,8 @@ export default component$(function ServicesSection() {
         {/* Services Grid */}
         <div class="grid gap-8 md:grid-cols-2 xl:grid-cols-4 ">
           {services.map((service) => {
-            const Image = service.image;
+            const Image = "";
+            Image = service.image;
 
             return (
               <div
