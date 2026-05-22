@@ -50,13 +50,7 @@ export default component$(function ServicesSection() {
                 <div class="relative h-[420px] overflow-hidden">
 
                   {/* IMAGE */}
-                  <Image
-                    class="
-                      h-full w-full object-cover
-                      transition-transform duration-700
-                      group-hover:scale-110
-                    "
-                  />
+                  <Image />
 
                   {/* OVERLAY */}
                   <div
