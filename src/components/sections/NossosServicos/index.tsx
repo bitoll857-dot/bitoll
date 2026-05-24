@@ -1,10 +1,13 @@
 import { component$ } from "@builder.io/qwik";
+import { useNavigate } from "@builder.io/qwik-city";
 
 import Button from "~/components/ui/Button"
 import ServiceCard from "~/components/cards/Servicos";
-import { services } from "./data";
+import { services } from "~/data/services";
 
 export default component$(function ServicesSection() {
+  const navigate = useNavigate();
+
   return (
     <section class="py-6">
       <div class="container mx-auto px-6">
@@ -32,7 +35,15 @@ export default component$(function ServicesSection() {
             />
           ))}
         </div>
-        <Button variant="secondary" position="end">Ver mais sobre nossos servicos</Button>
+        <Button
+          variant="secondary"
+          position="end"
+          onClick$={() => {
+            navigate("/services");
+          }}
+        >
+          Ver mais sobre nossos servicos
+        </Button>
         
       </div>
     </section>

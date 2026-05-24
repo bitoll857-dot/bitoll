@@ -1,7 +1,13 @@
-import { component$ } from "@builder.io/qwik";
-import { services } from "./data";
+import { component$, useSignal } from "@builder.io/qwik";
+
+import ServiceProductsModal from "~/components/services/ServiceProductsModal";
+import Button from "~/components/ui/Button";
+import { services } from "~/data/services";
 
 export default component$(function ServicesSection() {
+  const selectedServiceSlug = useSignal<string | null>(null);
+  const selectedServiceTitle = useSignal("");
+
   return (
     <section class="relative overflow-hidden bg-slate-950 py-10">
       {/* Background Effects */}
@@ -23,42 +29,34 @@ export default component$(function ServicesSection() {
       />
 
       <div class="container relative z-10 mx-auto p-6">
-
-
         {/* Services Grid */}
-        <div class="grid gap-8 md:grid-cols-2 xl:grid-cols-4 ">
+        <div class="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
           {services.map((service) => {
             const Image = service.image;
+            const serviceSlug = service.slug;
+            const serviceTitle = service.title;
+            const serviceFeatures = service.features ?? [];
 
             return (
               <div
+                key={serviceSlug}
                 class="group relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 transition-all duration-500 hover:-translate-y-3 hover:border-cyan-400/30 hover:shadow-2xl hover:shadow-cyan-500/10"
               >
                 <div class="relative h-[400px] overflow-hidden">
-                  <Image/>
+                  <Image />
 
                   {/* Overlay */}
                   <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/75 to-transparent" />
 
-                  {/* Top Info - Mais alinhado */}
-                  <div class="absolute top-6 left-6 right-6 z-20 flex items-center justify-between">
-                    <span class="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-slate-950/90 px-4 py-2 text-xs font-medium text-cyan-300 backdrop-blur-xl">
-                      <span class="h-2 w-2 rounded-full bg-cyan-400 bold" />
-                      {service.title}
-                    </span>
-
-                  </div>
-
                   {/* Bottom Content */}
                   <div class="absolute bottom-0 left-0 right-0 z-20 p-8">
-
                     <p class="mb-6 line-clamp-3 text-sm leading-relaxed text-slate-300">
                       {service.shortDescription}
                     </p>
 
                     {/* Features */}
                     <div class="mb-8 flex flex-wrap gap-2">
-                      {service.features.slice(0, 3).map((feature, i) => (
+                      {serviceFeatures.slice(0, 3).map((feature, i) => (
                         <span
                           key={i}
                           class="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-xs text-slate-400 backdrop-blur-xl"
@@ -72,14 +70,26 @@ export default component$(function ServicesSection() {
                     <div class="flex items-center justify-between border-t border-slate-800 pt-6">
                       <div>
                         <p class="text-xs uppercase tracking-widest text-slate-500">
-                          Solução Profissional
+                          Solucao Profissional
                         </p>
-                        <p class="text-sm font-semibold text-cyan-400">Bitoll Technology</p>
+                        <p class="text-sm font-semibold text-cyan-400">
+                          {serviceTitle}
+                        </p>
                       </div>
 
-                      <div class="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900/70 text-2xl transition-all duration-300 group-hover:border-cyan-400 group-hover:bg-cyan-400/10 group-hover:text-cyan-400 group-hover:translate-x-1">
-                        →
-                      </div>
+                      <Button
+                        variant="custom"
+                        size="none"
+                        spacing="none"
+                        aria-label={`Ver produtos para ${serviceTitle}`}
+                        buttonClass="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900/70 text-2xl transition-all duration-300 group-hover:translate-x-1 group-hover:border-cyan-400 group-hover:bg-cyan-400/10 group-hover:text-cyan-400"
+                        onClick$={() => {
+                          selectedServiceSlug.value = serviceSlug;
+                          selectedServiceTitle.value = serviceTitle;
+                        }}
+                      >
+                        &gt;
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -88,6 +98,17 @@ export default component$(function ServicesSection() {
           })}
         </div>
       </div>
+
+      {selectedServiceSlug.value && (
+        <ServiceProductsModal
+          serviceSlug={selectedServiceSlug.value}
+          serviceTitle={selectedServiceTitle.value}
+          onClose$={() => {
+            selectedServiceSlug.value = null;
+            selectedServiceTitle.value = "";
+          }}
+        />
+      )}
     </section>
   );
 });

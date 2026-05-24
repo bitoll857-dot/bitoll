@@ -22,6 +22,33 @@ export default component$(() => {
             href={`${import.meta.env.BASE_URL}manifest.json`}
           />
         )}
+        <script
+          dangerouslySetInnerHTML={`
+            (function () {
+              try {
+                var key = "bitoll_accessibility_preferences";
+                var saved = window.localStorage.getItem(key);
+                var value = saved ? JSON.parse(saved) : {};
+                var contrastModes = ["default", "dark-high", "light-high", "reading"];
+                var textSizeModes = ["normal", "medium", "large"];
+                var fontModes = ["default", "readable"];
+                var motionModes = ["normal", "reduced"];
+                var contrastMode = contrastModes.indexOf(value.contrastMode) >= 0 ? value.contrastMode : "default";
+                var textSize = textSizeModes.indexOf(value.textSize) >= 0 ? value.textSize : "normal";
+                var fontMode = fontModes.indexOf(value.fontMode) >= 0 ? value.fontMode : "default";
+                var motionMode = motionModes.indexOf(value.motionMode) >= 0 ? value.motionMode : "normal";
+                var root = document.documentElement;
+
+                root.classList.add(
+                  "a11y-contrast-" + contrastMode,
+                  "a11y-text-" + textSize,
+                  "a11y-font-" + fontMode,
+                  "a11y-motion-" + motionMode
+                );
+              } catch (error) {}
+            })();
+          `}
+        />
         <RouterHead />
       </head>
       <body lang="en">

@@ -1,3 +1,165 @@
 @import "tailwindcss";
 
+html.a11y-text-medium {
+  font-size: 112.5%;
+}
 
+html.a11y-text-large {
+  font-size: 125%;
+}
+
+html.a11y-font-readable body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+html.a11y-motion-reduced *,
+html.a11y-motion-reduced *::before,
+html.a11y-motion-reduced *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+}
+
+html.a11y-contrast-dark-high body,
+html.a11y-contrast-dark-high header,
+html.a11y-contrast-dark-high main,
+html.a11y-contrast-dark-high nav,
+html.a11y-contrast-dark-high section,
+html.a11y-contrast-dark-high aside,
+html.a11y-contrast-dark-high article,
+html.a11y-contrast-dark-high footer {
+  background: #020617 !important;
+  color: #ffffff !important;
+}
+
+html.a11y-contrast-dark-high h1,
+html.a11y-contrast-dark-high h2,
+html.a11y-contrast-dark-high h3,
+html.a11y-contrast-dark-high h4,
+html.a11y-contrast-dark-high p,
+html.a11y-contrast-dark-high span,
+html.a11y-contrast-dark-high label {
+  color: #ffffff !important;
+}
+
+html.a11y-contrast-dark-high a,
+html.a11y-contrast-dark-high button {
+  border-color: #fde047 !important;
+  color: #fde047 !important;
+}
+
+html.a11y-contrast-dark-high input,
+html.a11y-contrast-dark-high select,
+html.a11y-contrast-dark-high textarea {
+  background: #000000 !important;
+  border-color: #fde047 !important;
+  color: #ffffff !important;
+}
+
+html.a11y-contrast-dark-high
+  :where([class*="border-slate"], [class*="bg-slate-"]):not(
+    [class*="absolute"]
+  ):not([class*="bg-gradient"]):not([class*="blur"]) {
+  background-color: #020617 !important;
+  border-color: #fde047 !important;
+  color: #ffffff !important;
+}
+
+html.a11y-contrast-light-high body,
+html.a11y-contrast-light-high header,
+html.a11y-contrast-light-high main,
+html.a11y-contrast-light-high nav,
+html.a11y-contrast-light-high section,
+html.a11y-contrast-light-high aside,
+html.a11y-contrast-light-high article,
+html.a11y-contrast-light-high footer {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.a11y-contrast-light-high h1,
+html.a11y-contrast-light-high h2,
+html.a11y-contrast-light-high h3,
+html.a11y-contrast-light-high h4,
+html.a11y-contrast-light-high p,
+html.a11y-contrast-light-high span,
+html.a11y-contrast-light-high label {
+  color: #0f172a !important;
+}
+
+html.a11y-contrast-light-high a,
+html.a11y-contrast-light-high button {
+  border-color: #0369a1 !important;
+  color: #075985 !important;
+}
+
+html.a11y-contrast-light-high input,
+html.a11y-contrast-light-high select,
+html.a11y-contrast-light-high textarea {
+  background: #ffffff !important;
+  border-color: #0369a1 !important;
+  color: #0f172a !important;
+}
+
+html.a11y-contrast-light-high
+  :where([class*="border-slate"], [class*="bg-slate-"]):not(
+    [class*="absolute"]
+  ):not([class*="bg-gradient"]):not([class*="blur"]) {
+  background-color: #ffffff !important;
+  border-color: #0369a1 !important;
+  color: #0f172a !important;
+}
+
+html.a11y-contrast-reading body,
+html.a11y-contrast-reading header,
+html.a11y-contrast-reading main,
+html.a11y-contrast-reading nav,
+html.a11y-contrast-reading section,
+html.a11y-contrast-reading aside,
+html.a11y-contrast-reading article,
+html.a11y-contrast-reading footer {
+  background: #f5f0df !important;
+  color: #1f2937 !important;
+}
+
+html[class*="a11y-contrast-"] img,
+html[class*="a11y-contrast-"] picture,
+html[class*="a11y-contrast-"] video,
+html[class*="a11y-contrast-"] canvas,
+html[class*="a11y-contrast-"] svg {
+  background: transparent !important;
+}
+
+html.a11y-contrast-reading h1,
+html.a11y-contrast-reading h2,
+html.a11y-contrast-reading h3,
+html.a11y-contrast-reading h4,
+html.a11y-contrast-reading p,
+html.a11y-contrast-reading span,
+html.a11y-contrast-reading label {
+  color: #1f2937 !important;
+}
+
+html.a11y-contrast-reading a,
+html.a11y-contrast-reading button {
+  border-color: #0f766e !important;
+  color: #0f766e !important;
+}
+
+html.a11y-contrast-reading input,
+html.a11y-contrast-reading select,
+html.a11y-contrast-reading textarea {
+  background: #fffaf0 !important;
+  border-color: #0f766e !important;
+  color: #1f2937 !important;
+}
+
+html.a11y-contrast-reading
+  :where([class*="border-slate"], [class*="bg-slate-"]):not(
+    [class*="absolute"]
+  ):not([class*="bg-gradient"]):not([class*="blur"]) {
+  background-color: #fffaf0 !important;
+  border-color: #0f766e !important;
+  color: #1f2937 !important;
+}

@@ -1,7 +1,12 @@
-import { component$ } from "@builder.io/qwik";
+import { component$, useSignal } from "@builder.io/qwik";
+import AuthModal from "~/components/auth/AuthModal";
 import Button from "~/components/ui/Button";
+import type { AuthMode } from "~/types/auth";
 
 export default component$(() => {
+  const authModal = useSignal(false);
+  const authMode = useSignal<AuthMode>("register");
+
   return (
       <section class="py-24">
         <div class="container mx-auto px-6">
@@ -14,11 +19,29 @@ export default component$(() => {
               Crie sua conta para melhor ter mais acesso do que é a nossa experiencia.
             </p>
 
-            <Button variant="secondary">
+            <Button
+              variant="secondary"
+              onClick$={() => {
+                authMode.value = "register";
+                authModal.value = true;
+              }}
+            >
               Criar conta
             </Button>
           </div>
         </div>
+
+        {authModal.value && (
+          <AuthModal
+            mode={authMode.value}
+            onClose$={() => {
+              authModal.value = false;
+            }}
+            onModeChange$={(mode) => {
+              authMode.value = mode;
+            }}
+          />
+        )}
       </section>
     );
 });

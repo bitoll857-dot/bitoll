@@ -1,4 +1,4 @@
-import { component$, Slot } from "@builder.io/qwik";
+import { component$, Slot, type QRL } from "@builder.io/qwik";
 
 interface ButtonProps {
   variant?:
@@ -6,12 +6,14 @@ interface ButtonProps {
     | "secondary"
     | "danger"
     | "success"
-    | "ghost";
+    | "ghost"
+    | "custom";
 
   size?:
     | "sm"
     | "md"
-    | "lg";
+    | "lg"
+    | "none";
 
   position?:
     | "start"
@@ -22,6 +24,12 @@ interface ButtonProps {
     | "evenly";
 
   fullWidth?: boolean;
+  onClick$?: QRL<() => void>;
+  type?: "button" | "submit" | "reset";
+  ariaLabel?: string;
+  wrapperClass?: string;
+  buttonClass?: string;
+  spacing?: "normal" | "none";
 }
 
 export default component$<ButtonProps>(
@@ -30,6 +38,12 @@ export default component$<ButtonProps>(
     size = "md",
     position = "start",
     fullWidth = false,
+    onClick$,
+    type = "button",
+    ariaLabel,
+    wrapperClass,
+    buttonClass,
+    spacing = "normal",
   }) => {
     return (
       <div
@@ -60,11 +74,19 @@ export default component$<ButtonProps>(
 
           fullWidth &&
             "w-full",
+
+          wrapperClass,
         ]}
       >
         <button
+          type={type}
+          aria-label={ariaLabel}
+          onClick$={onClick$}
           class={[
-            "rounded-xl font-semibold transition duration-300  my-6",
+            "rounded-xl font-semibold transition duration-300",
+
+            spacing === "normal" &&
+              "my-6",
 
             /* VARIANTS */
 
@@ -98,6 +120,8 @@ export default component$<ButtonProps>(
 
             fullWidth &&
               "w-full",
+
+            buttonClass,
           ]}
         >
           <Slot />

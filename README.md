@@ -18,10 +18,33 @@ Inside your project, you'll see the following directory structure:
 ├── public/
 │   └── ...
 └── src/
-    ├── components/
-    │   └── ...
-    └── routes/
-        └── ...
+    ├───components
+    ├───cards
+    │   └───Servicos
+    ├───navigation
+    │   └───Navbar
+    ├───router-head
+    ├───sections
+    │   ├───CTA
+    │   ├───Footer
+    │   ├───Hero
+    │   ├───NossosServicos
+    │   ├───NossosServicosPage
+    │   └───Sobre
+    ├───shared
+    ├───ui
+    │   └───Button
+    │───visual
+    │   ├───Hero
+    │   ├───ServicoCCTV
+    │   ├───ServicoMotorDePortao
+    │   ├───ServicoTecnologiaInteligente
+    │   └───ServicoVedacaoEletrica
+    ├───data
+    ├───routes
+    │   └───services
+    └───types
+
 ```
 
 - `src/routes`: Provides the directory-based routing, which can include a hierarchy of `layout.tsx` layout files, and an `index.tsx` file as the page. Additionally, `index.ts` files are endpoints. Please see the [routing docs](https://qwik.dev/qwikcity/routing/overview/) for more info.

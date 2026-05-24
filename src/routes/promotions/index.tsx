@@ -1,7 +1,7 @@
 import { component$ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import Navbar from "~/components/navigation/Navbar";
-import NossosServicosPage from "~/components/sections/NossosServicosPage"
+import Promocoes from "~/components/sections/Promocoes"
 import Footer from "~/components/sections/Footer"
 
 export default component$(() => {
@@ -11,7 +11,7 @@ export default component$(() => {
     <div class="min-h-screen bg-slate-950 text-white py-24">
 
       {/* SERVICES */}
-      <NossosServicosPage />
+      <Promocoes />
       
       {/* FOOTER */}
       <Footer />
@@ -22,7 +22,7 @@ export default component$(() => {
 });
 
 export const head: DocumentHead = {
-  title: "Serviços na Bitoll",
+  title: "Promoções na Bitoll",
   meta: [
     {
       name: "description",

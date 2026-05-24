@@ -1,6 +1,6 @@
 import { component$ } from "@builder.io/qwik";
 
-import type { Service } from "./types";
+import type { Service } from "~/types/services";
 
 export default component$<Service>(
   ({ title, description, image: Image }) => {

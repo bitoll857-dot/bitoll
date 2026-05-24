@@ -1,8 +1,15 @@
-import { component$ } from "@builder.io/qwik";
+import { component$, useSignal } from "@builder.io/qwik";
+import AuthModal from "~/components/auth/AuthModal";
+import QuoteRequestModal from "~/components/forms/QuoteRequestModal";
 import Button from "~/components/ui/Button";
-import HeroImagem from "~/components/imagens/Hero";
+import HeroVisual from "~/components/visual/Hero";
+import type { AuthMode } from "~/types/auth";
 
 export default component$(() => {
+  const quoteModal = useSignal(false);
+  const authModal = useSignal(false);
+  const authMode = useSignal<AuthMode>("register");
+
   return (
       <section class="relative overflow-hidden">
         
@@ -29,8 +36,23 @@ export default component$(() => {
               </p>
 
               <div class="flex flex-wrap gap-4">
-                <Button variant="primary">Solicitar Orçamento</Button>
-                <Button variant="secondary">Criar conta</Button>
+                <Button
+                  variant="primary"
+                  onClick$={() => {
+                    quoteModal.value = true;
+                  }}
+                >
+                  Solicitar Orçamento
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick$={() => {
+                    authMode.value = "register";
+                    authModal.value = true;
+                  }}
+                >
+                  Criar conta
+                </Button>
               </div>
             </div>
 
@@ -39,7 +61,7 @@ export default component$(() => {
               <div class="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-3xl blur opacity-20"></div>
 
               <div class="relative bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden">
-                <HeroImagem />
+                <HeroVisual />
 
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
 
@@ -62,6 +84,26 @@ export default component$(() => {
 
           </div>
         </div>
+
+        {quoteModal.value && (
+          <QuoteRequestModal
+            onClose$={() => {
+              quoteModal.value = false;
+            }}
+          />
+        )}
+
+        {authModal.value && (
+          <AuthModal
+            mode={authMode.value}
+            onClose$={() => {
+              authModal.value = false;
+            }}
+            onModeChange$={(mode) => {
+              authMode.value = mode;
+            }}
+          />
+        )}
       </section>
   );
 });
