@@ -1,8 +1,8 @@
 import { component$ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
-import Navbar from "~/components/navigation/Navbar";
-import Promocoes from "~/components/sections/Promocoes"
-import Footer from "~/components/sections/Footer"
+import Navbar from "~/components/ui/navigation/Header";
+import Promocoes from "~/components/ui/sections/Promocoes"
+import Footer from "~/components/ui/sections/Footer"
 
 export default component$(() => {
   return (

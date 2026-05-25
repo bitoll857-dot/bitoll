@@ -1,132 +1,59 @@
-# Qwik City App ⚡️
+# Bitoll - Seguranca e Tecnologia
 
-- [Qwik Docs](https://qwik.dev/)
-- [Discord](https://qwik.dev/chat)
-- [Qwik GitHub](https://github.com/QwikDev/qwik)
-- [@QwikDev](https://twitter.com/QwikDev)
-- [Vite](https://vitejs.dev/)
+Sistema web institucional da Bitoll para apresentar servicos de seguranca e tecnologia, permitir solicitacao de orcamento, divulgar promocoes, pesquisar conteudos e oferecer recursos de acessibilidade ao visitante.
 
----
+## Funcionalidades
 
-## Project Structure
+- Pagina inicial com Hero e formulario de solicitacao de orcamento.
+- Navbar com links ativos, pesquisa global, menu mobile, acessibilidade e painel do usuario.
+- Area opcional do cliente com modal de login, registo e informacoes do usuario.
+- Servicos com modal de produtos por nivel de estrutura: basica, media e alta.
+- Tabela de produtos com detalhes por item e solicitacao de cotacao.
+- Pagina de promocoes com desconto, periodo, tecnologias, detalhes e acao de solicitacao.
+- Modal de acessibilidade com preferencias guardadas no localStorage.
+- Dados temporarios estaticos em arquivos dentro de `src/data`.
 
-This project is using Qwik with [QwikCity](https://qwik.dev/qwikcity/overview/). QwikCity is just an extra set of tools on top of Qwik to make it easier to build a full site, including directory-based routing, layouts, and more.
+## Tecnologias
 
-Inside your project, you'll see the following directory structure:
+- Qwik
+- Qwik City
+- Vite
+- TypeScript
+- Tailwind CSS
+- Vercel Edge
 
-```
-├── public/
-│   └── ...
-└── src/
-    ├───components
-    ├───cards
-    │   └───Servicos
-    ├───navigation
-    │   └───Navbar
-    ├───router-head
-    ├───sections
-    │   ├───CTA
-    │   ├───Footer
-    │   ├───Hero
-    │   ├───NossosServicos
-    │   ├───NossosServicosPage
-    │   └───Sobre
-    ├───shared
-    ├───ui
-    │   └───Button
-    │───visual
-    │   ├───Hero
-    │   ├───ServicoCCTV
-    │   ├───ServicoMotorDePortao
-    │   ├───ServicoTecnologiaInteligente
-    │   └───ServicoVedacaoEletrica
-    ├───data
-    ├───routes
-    │   └───services
-    └───types
+## Estrutura Principal
 
-```
+- `src/components`: componentes reutilizaveis da interface.
+- `src/components/sections`: secoes principais das paginas.
+- `src/components/navigation`: navbar, menu mobile, avatar e sidebar do usuario.
+- `src/components/forms`: formularios gerais, como solicitacao de orcamento.
+- `src/components/auth`: modal e formularios de login/registo.
+- `src/components/accessibility`: botao e modal de acessibilidade.
+- `src/components/services`: modal de produtos e tabela por servico.
+- `src/components/promotions`: modal de detalhes das promocoes.
+- `src/components/search`: modal e tabela de pesquisa global.
+- `src/data`: dados estaticos temporarios.
+- `src/types`: tipos TypeScript do dominio.
+- `src/utils`: funcoes auxiliares.
+- `src/routes`: paginas e rotas do Qwik City.
 
-- `src/routes`: Provides the directory-based routing, which can include a hierarchy of `layout.tsx` layout files, and an `index.tsx` file as the page. Additionally, `index.ts` files are endpoints. Please see the [routing docs](https://qwik.dev/qwikcity/routing/overview/) for more info.
+## Dados Estaticos
 
-- `src/components`: Recommended directory for components.
+Por enquanto, o sistema usa dados locais em `src/data`, como:
 
-- `public`: Any static assets, like images, can be placed in the public directory. Please see the [Vite public directory](https://vitejs.dev/guide/assets.html#the-public-directory) for more info.
+- `user.ts`
+- `services.ts`
+- `service-products.ts`
+- `promotions.ts`
+- `search.ts`
+- `accessibility.ts`
+- `links.ts`
 
-## Add Integrations and deployment
+No futuro, estes dados podem ser ligados a uma API, base de dados, CMS ou outro servico de armazenamento.
 
-Use the `npm run qwik add` command to add additional integrations. Some examples of integrations includes: Cloudflare, Netlify or Express Server, and the [Static Site Generator (SSG)](https://qwik.dev/qwikcity/guides/static-site-generation/).
+## Como Rodar
 
-```shell
-npm run qwik add # or `yarn qwik add`
-```
-
-## Development
-
-Development mode uses [Vite's development server](https://vitejs.dev/). The `dev` command will server-side render (SSR) the output during development.
-
-```shell
-npm start # or `yarn start`
-```
-
-> Note: during dev mode, Vite may request a significant number of `.js` files. This does not represent a Qwik production build.
-
-## Preview
-
-The preview command will create a production build of the client modules, a production build of `src/entry.preview.tsx`, and run a local server. The preview server is only for convenience to preview a production build locally and should not be used as a production server.
-
-```shell
-npm run preview # or `yarn preview`
-```
-
-## Production
-
-The production build will generate client and server modules by running both client and server build commands. The build command will use Typescript to run a type check on the source code.
-
-```shell
-npm run build # or `yarn build`
-```
-
-## Vercel Edge
-
-This starter site is configured to deploy to [Vercel Edge Functions](https://vercel.com/docs/concepts/functions/edge-functions), which means it will be rendered at an edge location near to your users.
-
-## Installation
-
-The adaptor will add a new `vite.config.ts` within the `adapters/` directory, and a new entry file will be created, such as:
-
-```
-└── adapters/
-    └── vercel-edge/
-        └── vite.config.ts
-└── src/
-    └── entry.vercel-edge.tsx
-```
-
-Additionally, within the `package.json`, the `build.server` script will be updated with the Vercel Edge build.
-
-## Production build
-
-To build the application for production, use the `build` command, this command will automatically run `npm run build.server` and `npm run build.client`:
-
-```shell
-npm run build
-```
-
-[Read the full guide here](https://github.com/QwikDev/qwik/blob/main/starters/adapters/vercel-edge/README.md)
-
-## Dev deploy
-
-To deploy the application for development:
-
-```shell
-npm run deploy
-```
-
-Notice that you might need a [Vercel account](https://docs.Vercel.com/get-started/) in order to complete this step!
-
-## Production deploy
-
-The project is ready to be deployed to Vercel. However, you will need to create a git repository and push the code to it.
-
-You can [deploy your site to Vercel](https://vercel.com/docs/concepts/deployments/overview) either via a Git provider integration or through the Vercel CLI.
+```bash
+npm install
+npm start
