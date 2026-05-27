@@ -7,7 +7,7 @@ export default component$(() => {
       alt="Sistema de CCTV"
       width={1200}
       height={900}
-      class="absolute inset-0 w-full h-full object-cover opacity-100"
+      class="absolute inset-0 h-full w-full object-cover opacity-100"
     />
   );
 });

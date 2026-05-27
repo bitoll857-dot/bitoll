@@ -9,14 +9,10 @@ type MobileMenuProps = {
 
 export default component$<MobileMenuProps>(({ onOpenAccessibility$ }) => {
   return (
-    <div class="lg:hidden absolute top-20 left-0 w-full border-b border-slate-800 bg-slate-950">
-      <div class="container mx-auto px-6 py-6 flex flex-col gap-6">
+    <div class="absolute left-0 top-20 w-full border-b border-slate-800 bg-slate-950 lg:hidden">
+      <div class="container mx-auto flex flex-col gap-6 px-6 py-6">
         {headerLinks.map((link) => (
-          <HeaderLink
-            key={link.href}
-            href={link.href}
-            label={link.label}
-          />
+          <HeaderLink key={link.href} href={link.href} label={link.label} />
         ))}
 
         <button

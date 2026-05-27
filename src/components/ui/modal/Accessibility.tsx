@@ -42,7 +42,16 @@ export default component$<AccessibilityModalProps>(({ onClose$ }) => {
       />
 
       <div class="relative z-10 mx-auto max-h-[92dvh] w-full max-w-[760px] overflow-y-auto rounded-3xl border border-slate-800 bg-slate-950 p-6 shadow-[0_30px_100px_rgba(15,23,42,0.75)] sm:p-8">
-        <div class="flex items-start justify-between gap-4">
+        <button
+          type="button"
+          aria-label="Fechar"
+          class="absolute right-5 top-5 z-20 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-800 bg-slate-900/95 text-lg text-slate-300 shadow-xl transition duration-300 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300"
+          onClick$={onClose$}
+        >
+          x
+        </button>
+
+        <div class="flex items-start justify-between gap-4 pr-14">
           <div>
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">
               Acessibilidade
@@ -58,14 +67,6 @@ export default component$<AccessibilityModalProps>(({ onClose$ }) => {
             </p>
           </div>
 
-          <button
-            type="button"
-            aria-label="Fechar"
-            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-800 bg-slate-900/80 text-lg text-slate-300 transition duration-300 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300"
-            onClick$={onClose$}
-          >
-            x
-          </button>
         </div>
 
         <div class="mt-7 space-y-5">

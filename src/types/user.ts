@@ -1,17 +1,6 @@
-export type CustomerType = "Particular" | "Empresa" | "Condominio" | "Industria";
+export type {
+  ContactMethod,
+  CustomerType,
+  User,
+} from "~/features/users/types/user.types";
 
-export type ContactMethod = "WhatsApp" | "Telefone" | "Email";
-
-export interface User {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  avatarUrl?: string;
-  customerType: CustomerType;
-  city: string;
-  status: "Conta ativa" | "Conta pendente";
-  verified: boolean;
-  preferredContactMethod: ContactMethod;
-  interests: string[];
-}

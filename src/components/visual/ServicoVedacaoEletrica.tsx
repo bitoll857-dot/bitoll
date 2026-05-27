@@ -7,7 +7,7 @@ export default component$(() => {
       alt="Vedacao eletrica"
       width={1024}
       height={449}
-      class="absolute inset-0 w-full h-full object-cover opacity-100"
+      class="absolute inset-0 h-full w-full object-cover opacity-100"
     />
   );
 });

@@ -7,7 +7,7 @@ export default component$(() => {
       alt="Instalacao de seguranca"
       width={1200}
       height={800}
-      class="w-full h-[500px] object-cover"
+      class="h-[500px] w-full object-cover"
     />
   );
 });

@@ -7,7 +7,7 @@ export default component$(() => {
       alt="Tecnologia inteligente"
       width={1024}
       height={656}
-      class="absolute inset-0 w-full h-full object-cover opacity-100"
+      class="absolute inset-0 h-full w-full object-cover opacity-100"
     />
   );
 });

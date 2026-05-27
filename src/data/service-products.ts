@@ -49,6 +49,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Energizador de cerca",
           quantity: "1 unidade",
+          estimatedQuantity: 1,
+          unitPrice: 12000,
+          brand: "Nemtek",
+          model: "Wizord 2",
+          system: "Cerca eletrica",
           category: "Central",
           description: "Controla e alimenta a vedacao eletrica.",
           detail:
@@ -58,6 +63,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Fio de aluminio",
           quantity: "Conforme perimetro",
+          estimatedQuantity: 2,
+          unitPrice: 2200,
+          brand: "Nemtek",
+          model: "Arame de aco 680m",
+          system: "Condutor",
           category: "Condutor",
           description: "Linha eletrificada instalada no muro.",
           detail:
@@ -67,6 +77,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Hastes e isoladores",
           quantity: "Conforme perimetro",
+          estimatedQuantity: 35,
+          unitPrice: 350,
+          brand: "Nemtek",
+          model: "Poste galvanizado 6 linhas",
+          system: "Estrutura",
           category: "Estrutura",
           description: "Suporte fisico para as linhas da cerca.",
           detail:
@@ -78,6 +93,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Energizador profissional",
           quantity: "1 unidade",
+          estimatedQuantity: 1,
+          unitPrice: 12000,
+          brand: "Nemtek",
+          model: "Wizord 2",
+          system: "Cerca eletrica",
           category: "Central",
           description: "Central com melhor capacidade de controlo.",
           detail:
@@ -87,6 +107,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Sirene e sinalizador",
           quantity: "1 conjunto",
+          estimatedQuantity: 1,
+          unitPrice: 1200,
+          brand: "Nemtek",
+          model: "Sirene 12V + luz estroboscopica",
+          system: "Alarme",
           category: "Alerta",
           description: "Emite alerta sonoro e visual em ocorrencias.",
           detail:
@@ -96,6 +121,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Bateria de backup",
           quantity: "1 unidade",
+          estimatedQuantity: 1,
+          unitPrice: 4200,
+          brand: "Moura",
+          model: "12V 7Ah",
+          system: "Energia",
           category: "Energia",
           description: "Mantem a cerca ativa em falha eletrica.",
           detail:
@@ -105,6 +135,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Placas de aviso",
           quantity: "Conforme perimetro",
+          estimatedQuantity: 16,
+          unitPrice: 80,
+          brand: "Nemtek",
+          model: "Placa de aviso",
+          system: "Sinalizacao",
           category: "Seguranca",
           description: "Sinalizacao visivel da cerca eletrica.",
           detail:
@@ -116,6 +151,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Central por zonas",
           quantity: "Conforme projeto",
+          estimatedQuantity: 1,
+          unitPrice: 12000,
+          brand: "Nemtek",
+          model: "Wizord 2",
+          system: "Cerca eletrica",
           category: "Central",
           description: "Divide o perimetro por areas monitoradas.",
           detail:
@@ -125,6 +165,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Protecao contra surtos",
           quantity: "1 conjunto",
+          estimatedQuantity: 1,
+          unitPrice: 2800,
+          brand: "Nemtek",
+          model: "Protecao HT",
+          system: "Protecao eletrica",
           category: "Protecao",
           description: "Ajuda a proteger contra descargas eletricas.",
           detail:
@@ -134,6 +179,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Modulo de monitoramento",
           quantity: "1 unidade",
+          estimatedQuantity: 1,
+          unitPrice: 6000,
+          brand: "ZKTeco",
+          model: "Modulo remoto",
+          system: "Monitoramento",
           category: "Monitoramento",
           description: "Permite acompanhamento remoto do sistema.",
           detail:
@@ -143,6 +193,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Hastes reforcadas",
           quantity: "Conforme perimetro",
+          estimatedQuantity: 52,
+          unitPrice: 350,
+          brand: "Nemtek",
+          model: "Poste galvanizado 6 linhas",
+          system: "Estrutura",
           category: "Estrutura",
           description: "Estrutura mais resistente para perimetros exigentes.",
           detail:
@@ -159,6 +214,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Cameras HD",
           quantity: "2 a 4 unidades",
+          estimatedQuantity: 4,
+          unitPrice: 1000,
+          brand: "Hikvision",
+          model: "DS-2CE1AD0T-IRPF 2MP",
+          system: "Analogico Turbo HD",
           category: "Captacao",
           description: "Cameras para pontos principais.",
           detail:
@@ -168,6 +228,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "DVR/NVR",
           quantity: "1 unidade",
+          estimatedQuantity: 1,
+          unitPrice: 4500,
+          brand: "Hikvision",
+          model: "IDS-7204HQHI-M1/XT",
+          system: "Analogico Turbo HD",
           category: "Gravacao",
           description: "Equipamento para gerir e gravar imagens.",
           detail:
@@ -177,6 +242,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Disco rigido",
           quantity: "1 unidade",
+          estimatedQuantity: 1,
+          unitPrice: 4000,
+          brand: "Seagate",
+          model: "SkyHawk 1TB",
+          system: "Armazenamento CCTV",
           category: "Armazenamento",
           description: "Guarda as gravacoes do sistema.",
           detail:
@@ -188,6 +258,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Cameras IP ou HD",
           quantity: "4 a 8 unidades",
+          estimatedQuantity: 6,
+          unitPrice: 2300,
+          brand: "Tiandy",
+          model: "TC-C321N 5MP",
+          system: "IP",
           category: "Captacao",
           description: "Cobertura ampliada para areas importantes.",
           detail:
@@ -197,6 +272,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Switch PoE",
           quantity: "1 unidade",
+          estimatedQuantity: 1,
+          unitPrice: 6000,
+          brand: "Tiandy",
+          model: "NVR TC-R3108 AK",
+          system: "IP",
           category: "Rede",
           description: "Liga e alimenta cameras IP.",
           detail:
@@ -206,6 +286,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Rack tecnico",
           quantity: "1 unidade",
+          estimatedQuantity: 1,
+          unitPrice: 2850,
+          brand: "Bitoll",
+          model: "Calha e organizacao tecnica",
+          system: "Infraestrutura",
           category: "Organizacao",
           description: "Organiza gravador, rede e cabos.",
           detail:
@@ -215,6 +300,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Acesso remoto",
           quantity: "1 configuracao",
+          estimatedQuantity: 1,
+          unitPrice: 6000,
+          brand: "Bitoll",
+          model: "Instalacao, configuracao e teste",
+          system: "Software",
           category: "Software",
           description: "Permite acompanhar cameras pelo telefone.",
           detail:
@@ -226,6 +316,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Cameras profissionais",
           quantity: "8 ou mais",
+          estimatedQuantity: 8,
+          unitPrice: 3600,
+          brand: "EZVIZ",
+          model: "H6c Pro 2K",
+          system: "Wi-Fi",
           category: "Captacao",
           description: "Cameras robustas para cobertura completa.",
           detail:
@@ -235,6 +330,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Camera PTZ",
           quantity: "Opcional",
+          estimatedQuantity: 1,
+          unitPrice: 6500,
+          brand: "Tiandy",
+          model: "PTZ IP",
+          system: "IP",
           category: "Monitoramento ativo",
           description: "Camera movel para vigiar areas amplas.",
           detail:
@@ -244,6 +344,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Storage de gravacao",
           quantity: "Conforme retencao",
+          estimatedQuantity: 1,
+          unitPrice: 6500,
+          brand: "Seagate",
+          model: "SkyHawk 2TB",
+          system: "Armazenamento CCTV",
           category: "Armazenamento",
           description: "Guarda grande volume de imagens.",
           detail:
@@ -253,6 +358,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "UPS/Nobreak",
           quantity: "1 conjunto",
+          estimatedQuantity: 1,
+          unitPrice: 9000,
+          brand: "Bitoll",
+          model: "Backup CCTV",
+          system: "Energia",
           category: "Energia",
           description: "Mantem o CCTV ativo em falha eletrica.",
           detail:
@@ -379,6 +489,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Roteador ou access point",
           quantity: "1 unidade",
+          estimatedQuantity: 1,
+          unitPrice: 3600,
+          brand: "LB-Link",
+          model: "Router 4G",
+          system: "Internet",
           category: "Rede",
           description: "Base de conectividade para dispositivos.",
           detail:
@@ -388,6 +503,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Hub inteligente",
           quantity: "1 unidade",
+          estimatedQuantity: 1,
+          unitPrice: 18000,
+          brand: "Starlink",
+          model: "Mini",
+          system: "Internet satelital",
           category: "Automacao",
           description: "Centraliza dispositivos inteligentes.",
           detail:
@@ -397,6 +517,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Configuracao em aplicativo",
           quantity: "1 servico",
+          estimatedQuantity: 5,
+          unitPrice: 300,
+          brand: "Bitoll",
+          model: "Instalacao, configuracao e testes",
+          system: "Servico tecnico",
           category: "Software",
           description: "Deixa o controlo pronto no telemovel.",
           detail:
@@ -408,6 +533,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Switch de rede",
           quantity: "1 unidade",
+          estimatedQuantity: 1,
+          unitPrice: 6000,
+          brand: "TP-Link",
+          model: "Switch gigabit",
+          system: "Rede",
           category: "Rede",
           description: "Liga varios equipamentos numa estrutura organizada.",
           detail:
@@ -417,6 +547,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Sensores inteligentes",
           quantity: "Conforme ambientes",
+          estimatedQuantity: 4,
+          unitPrice: 1200,
+          brand: "EZVIZ",
+          model: "Sensor inteligente",
+          system: "Automacao",
           category: "Automacao",
           description: "Monitoram movimento, abertura ou eventos.",
           detail:
@@ -426,6 +561,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Wi-Fi de cobertura",
           quantity: "Conforme area",
+          estimatedQuantity: 1,
+          unitPrice: 18000,
+          brand: "Starlink",
+          model: "Standard V4",
+          system: "Internet satelital",
           category: "Rede",
           description: "Melhora sinal em areas maiores.",
           detail:
@@ -435,6 +575,11 @@ export const serviceProductCatalogs: ServiceProductCatalog[] = [
         {
           name: "Rack e organizacao",
           quantity: "Opcional",
+          estimatedQuantity: 10,
+          unitPrice: 190,
+          brand: "Bitoll",
+          model: "Calha plastica 25x16mm",
+          system: "Infraestrutura",
           category: "Organizacao",
           description: "Protege equipamentos e organiza cabos.",
           detail:

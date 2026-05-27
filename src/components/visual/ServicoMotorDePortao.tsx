@@ -7,7 +7,7 @@ export default component$(() => {
       alt="Motor de portao"
       width={1152}
       height={1536}
-      class="absolute inset-0 w-full h-full object-cover opacity-100"
+      class="absolute inset-0 h-full w-full object-cover opacity-100"
     />
   );
 });

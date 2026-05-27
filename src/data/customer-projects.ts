@@ -1,0 +1,55 @@
+import type { CustomerProject } from "~/types/customer-project";
+
+export const customerProjects: CustomerProject[] = [
+  {
+    id: "proj-cctv-001",
+    title: "CCTV residencial T3",
+    service: "CCTV & Monitoramento",
+    location: "Maputo, Matola",
+    requestedAt: "2026-05-22",
+    status: "Em instalacao",
+    progress: 68,
+    nextStep: "Finalizar passagem de cabos e configurar acesso remoto.",
+    technician: "Equipa tecnica Bitoll A",
+    estimatedCompletion: "2026-05-30",
+    updates: [
+      "Visita tecnica concluida.",
+      "Produtos principais separados.",
+      "Instalacao iniciada em pontos prioritarios.",
+    ],
+  },
+  {
+    id: "proj-vedacao-002",
+    title: "Vedacao eletrica para armazem",
+    service: "Vedacao Eletrica",
+    location: "Beira, Manga",
+    requestedAt: "2026-05-24",
+    status: "Em avaliacao",
+    progress: 35,
+    nextStep: "Confirmar medidas do perimetro e nivel de estrutura.",
+    technician: "Consultoria tecnica Bitoll",
+    estimatedCompletion: "2026-06-04",
+    updates: [
+      "Pedido recebido.",
+      "Cliente contactado por WhatsApp.",
+      "Aguardando confirmacao de visita tecnica.",
+    ],
+  },
+  {
+    id: "proj-motor-003",
+    title: "Automacao de portao residencial",
+    service: "Motores de Portoes",
+    location: "Maputo, Costa do Sol",
+    requestedAt: "2026-05-10",
+    status: "Concluido",
+    progress: 100,
+    nextStep: "Servico entregue. Aguardar avaliacao do cliente.",
+    technician: "Equipa tecnica Bitoll B",
+    estimatedCompletion: "2026-05-18",
+    updates: [
+      "Instalacao concluida.",
+      "Controles configurados.",
+      "Teste final aprovado.",
+    ],
+  },
+];

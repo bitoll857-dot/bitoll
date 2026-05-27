@@ -3,6 +3,10 @@ import { component$, type QRL, useSignal } from "@builder.io/qwik";
 import Button from "../button/Button";
 import type { Promotion } from "~/types/promotion";
 import QuoteRequestModal from "../modal/QuoteRequest";
+import AuthModal from "../modal/Auth";
+import ActionToast from "../toast";
+import { currentUser } from "~/data/user";
+import type { AuthMode } from "~/types/auth";
 
 type PromotionDetailsModalProps = {
   promotion: Promotion;
@@ -16,14 +20,56 @@ const formatDate = (value: string) => {
   return `${day}/${month}/${year}`;
 };
 
+const getPromotionSubtotal = (promotion: Promotion) =>
+  promotion.articles.reduce(
+    (total, article) => total + article.quantity * article.unitPrice,
+    0,
+  ) + promotion.installationFee;
+
+const getPromotionTaxable = (promotion: Promotion) =>
+  Math.max(getPromotionSubtotal(promotion) - promotion.discountAmount, 0);
+
+const getPromotionIva = (promotion: Promotion) =>
+  getPromotionTaxable(promotion) * 0.12;
+
+const getPromotionTotal = (promotion: Promotion) =>
+  getPromotionTaxable(promotion) + getPromotionIva(promotion);
+
+const formatMoney = (value: number, currency: string) =>
+  `${value.toLocaleString("pt-MZ")} ${currency}`;
+
+const getQuoteProducts = (promotion: Promotion) =>
+  promotion.articles.map((article) => ({
+    id: article.id,
+    name: article.name,
+    quantity: `${article.quantity} unidade${article.quantity > 1 ? "s" : ""}`,
+    estimatedQuantity: article.quantity,
+    unitPrice: article.unitPrice,
+    brand: article.brand,
+    model: article.model,
+    system: article.system,
+    category: article.system,
+    description: `${article.brand} ${article.model}`,
+    detail: article.description,
+    required: true,
+  }));
+
 export default component$<PromotionDetailsModalProps>(
   ({ promotion, onClose$  }) => {
     
     const quoteModal = useSignal(false);
+    const loginNotice = useSignal(false);
+    const authModal = useSignal(false);
+    const authMode = useSignal<AuthMode>("login");
 
     const initialData = useSignal({
       service: "",
+      serviceTitle: "",
+      originLabel: "",
       source: "",
+      products: getQuoteProducts(promotion),
+      discountAmount: 0,
+      currency: "MZN",
     });
 
     return (
@@ -104,6 +150,102 @@ export default component$<PromotionDetailsModalProps>(
               </div>
             </div>
 
+            <div class="mt-7 rounded-3xl border border-slate-800 bg-slate-900/50 p-4">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Factura da promocao
+                </p>
+                <p class="text-sm font-bold text-cyan-200">
+                  Total: {formatMoney(getPromotionTotal(promotion), promotion.currency)}
+                </p>
+              </div>
+
+              <div class="mt-4 overflow-x-auto">
+                <table class="w-full min-w-[760px] text-left">
+                  <thead class="border-b border-slate-800 text-xs uppercase tracking-[0.14em] text-slate-500">
+                    <tr>
+                      <th class="py-3 pr-4">Artigo</th>
+                      <th class="py-3 pr-4">Marca / Modelo</th>
+                      <th class="py-3 pr-4">Sistema</th>
+                      <th class="py-3 pr-4">Qtd</th>
+                      <th class="py-3 pr-4">Unitario</th>
+                      <th class="py-3">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {promotion.articles.map((article) => (
+                      <tr
+                        key={article.id}
+                        class="border-b border-slate-800 last:border-b-0"
+                      >
+                        <td class="py-3 pr-4">
+                          <p class="text-sm font-semibold text-white">
+                            {article.name}
+                          </p>
+                          <p class="mt-1 text-xs text-slate-500">
+                            {article.description}
+                          </p>
+                        </td>
+                        <td class="py-3 pr-4 text-sm text-slate-300">
+                          {article.brand} / {article.model}
+                        </td>
+                        <td class="py-3 pr-4 text-sm text-cyan-200">
+                          {article.system}
+                        </td>
+                        <td class="py-3 pr-4 text-sm text-slate-300">
+                          {article.quantity}
+                        </td>
+                        <td class="py-3 pr-4 text-sm text-slate-300">
+                          {formatMoney(article.unitPrice, promotion.currency)}
+                        </td>
+                        <td class="py-3 text-sm font-semibold text-white">
+                          {formatMoney(
+                            article.quantity * article.unitPrice,
+                            promotion.currency,
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="mt-5 grid gap-3 sm:grid-cols-4">
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+                  <p class="text-xs uppercase tracking-[0.14em] text-slate-500">
+                    Instalacao
+                  </p>
+                  <p class="mt-2 text-sm font-semibold text-slate-100">
+                    {formatMoney(promotion.installationFee, promotion.currency)}
+                  </p>
+                </div>
+                <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
+                  <p class="text-xs uppercase tracking-[0.14em] text-emerald-300">
+                    Desconto
+                  </p>
+                  <p class="mt-2 text-sm font-semibold text-emerald-100">
+                    -{formatMoney(promotion.discountAmount, promotion.currency)}
+                  </p>
+                </div>
+                <div class="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
+                  <p class="text-xs uppercase tracking-[0.14em] text-amber-300">
+                    IVA 12%
+                  </p>
+                  <p class="mt-2 text-sm font-semibold text-amber-100">
+                    {formatMoney(getPromotionIva(promotion), promotion.currency)}
+                  </p>
+                </div>
+                <div class="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
+                  <p class="text-xs uppercase tracking-[0.14em] text-cyan-300">
+                    Total
+                  </p>
+                  <p class="mt-2 text-sm font-bold text-cyan-100">
+                    {formatMoney(getPromotionTotal(promotion), promotion.currency)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div class="mt-6 grid gap-4 md:grid-cols-2">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -144,9 +286,22 @@ export default component$<PromotionDetailsModalProps>(
               spacing="none"
               buttonClass="rounded-2xl px-5 py-3 text-sm font-bold"
               onClick$={() => {
+                if (
+                  !currentUser ||
+                  localStorage.getItem("bitoll-auth-state") === "guest"
+                ) {
+                  loginNotice.value = true;
+                  return;
+                }
+
                 initialData.value = {
-                  service: promotion.slug,
+                  service: promotion.serviceSlug,
+                  serviceTitle: promotion.title,
+                  originLabel: `promocao ${promotion.title}`,
                   source: "promotion",
+                  products: getQuoteProducts(promotion),
+                  discountAmount: promotion.discountAmount,
+                  currency: promotion.currency,
                 };
 
                 quoteModal.value = true;
@@ -172,6 +327,33 @@ export default component$<PromotionDetailsModalProps>(
             initialData={initialData.value}
             onClose$={() => {
               quoteModal.value = false;
+            }}
+          />
+        )}
+
+        <ActionToast
+          isOpen={loginNotice.value}
+          title="Login necessario"
+          message="Esta solicitacao precisa ficar ligada a sua conta para ser acompanhada depois."
+          actionLabel="Entrar"
+          onClose$={() => {
+            loginNotice.value = false;
+          }}
+          onAction$={() => {
+            loginNotice.value = false;
+            authMode.value = "login";
+            authModal.value = true;
+          }}
+        />
+
+        {authModal.value && (
+          <AuthModal
+            mode={authMode.value}
+            onClose$={() => {
+              authModal.value = false;
+            }}
+            onModeChange$={(mode) => {
+              authMode.value = mode;
             }}
           />
         )}

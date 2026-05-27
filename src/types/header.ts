@@ -1,4 +1,2 @@
-export interface HeaderLinkProps {
-  href: string;
-  label: string;
-}
+export type { HeaderLinkProps } from "./global.types";
+

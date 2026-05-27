@@ -2,15 +2,17 @@ import { component$, useSignal } from "@builder.io/qwik";
 
 import AuthModal from "../modal/Auth";
 import QuoteRequestModal from "../modal/QuoteRequest";
+import ActionToast from "~/components/ui/toast";
 
-import Button from "../button/Button";
-
-import HeroVisual from "../../visual/Hero";
+import Button from "~/components/ui/button/Button";
+import HeroVisual from "~/components/visual/Hero";
+import { currentUser } from "~/data/user";
 
 import type { AuthMode } from "~/types/auth";
 
 export default component$(() => {
   const quoteModal = useSignal(false);
+  const loginNotice = useSignal(false);
 
   const authModal = useSignal(false);
 
@@ -18,8 +20,11 @@ export default component$(() => {
 
   const initialData = useSignal({
     service: "",
+    serviceTitle: "",
     source: "",
   });
+
+  const isLoggedIn = !!currentUser;
 
   return (
     <section class="relative overflow-hidden">
@@ -48,8 +53,17 @@ export default component$(() => {
               <Button
                 variant="primary"
                 onClick$={() => {
+                  if (
+                    !currentUser ||
+                    localStorage.getItem("bitoll-auth-state") === "guest"
+                  ) {
+                    loginNotice.value = true;
+                    return;
+                  }
+
                   initialData.value = {
                     service: "cotação",
+                    serviceTitle: "Cotacao geral",
                     source: "hero",
                   };
 
@@ -62,17 +76,18 @@ export default component$(() => {
               {/* PROMOTION BUTTON */}
               
 
-              {/* AUTH BUTTON */}
-              <Button
-                variant="secondary"
-                onClick$={() => {
-                  authMode.value = "register";
+              {!isLoggedIn && (
+                <Button
+                  variant="secondary"
+                  onClick$={() => {
+                    authMode.value = "register";
 
-                  authModal.value = true;
-                }}
-              >
-                Criar conta
-              </Button>
+                    authModal.value = true;
+                  }}
+                >
+                  Criar conta
+                </Button>
+              )}
             </div>
           </div>
 
@@ -113,6 +128,21 @@ export default component$(() => {
           }}
         />
       )}
+
+      <ActionToast
+        isOpen={loginNotice.value}
+        title="Login necessario"
+        message="A Bitoll precisa ligar o pedido a sua conta para guardar o historico e permitir acompanhamento posterior."
+        actionLabel="Entrar"
+        onClose$={() => {
+          loginNotice.value = false;
+        }}
+        onAction$={() => {
+          loginNotice.value = false;
+          authMode.value = "login";
+          authModal.value = true;
+        }}
+      />
 
       {/* AUTH MODAL */}
       {authModal.value && (

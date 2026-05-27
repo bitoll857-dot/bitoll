@@ -4,11 +4,11 @@ export const headerLinks = [
     href: "/",
   },
   {
-    label: "Serviços",
+    label: "Servicos",
     href: "/services",
   },
   {
-    label: "Promoções",
+    label: "Promocoes",
     href: "/promotions",
   },
 ];
