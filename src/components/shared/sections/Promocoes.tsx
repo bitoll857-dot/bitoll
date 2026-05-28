@@ -1,14 +1,15 @@
-import { component$, useSignal } from "@builder.io/qwik";
+import { component$, useSignal, useVisibleTask$ } from "@builder.io/qwik";
 
 import QuoteRequestModal from "../modal/QuoteRequest";
 import PromotionDetailsModal from "../modal/Promotion";
 import AuthModal from "../modal/Auth";
 import Button from "../button/Button";
 import ActionToast from "~/components/ui/toast";
-import { promotions } from "~/data/promotions";
-import { currentUser } from "~/data/user";
+import { getCachedAuthUser } from "~/lib/supabase/client";
+import { loadPromotionsFromSupabase } from "~/lib/supabase/platform-data";
 import type { AuthMode } from "~/types/auth";
 import type { Promotion } from "~/types/promotion";
+import type { ServiceProduct } from "~/types/service-products";
 
 const formatDate = (value: string) => {
   const [year, month, day] = value.split("-");
@@ -56,18 +57,33 @@ export default component$(function PromotionsSection() {
   const loginNotice = useSignal(false);
   const authModal = useSignal(false);
   const authMode = useSignal<AuthMode>("login");
-  const initialData = useSignal({
+  const promotions = useSignal<Promotion[]>([]);
+  const isLoading = useSignal(true);
+  const initialData = useSignal<{
+    service: string;
+    serviceTitle: string;
+    originLabel: string;
+    source: string;
+    products: ServiceProduct[];
+    discountAmount: number;
+    currency: string;
+  }>({
     service: "",
     serviceTitle: "",
     originLabel: "",
     source: "",
-    products: getQuoteProducts(promotions[0]),
+    products: [],
     discountAmount: 0,
     currency: "MZN",
   });
 
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(async () => {
+    promotions.value = await loadPromotionsFromSupabase();
+    isLoading.value = false;
+  });
 
-  const selectedPromotion = promotions.find(
+  const selectedPromotion = promotions.value.find(
     (promotion) => promotion.slug === selectedPromotionSlug.value,
   );
 
@@ -106,7 +122,7 @@ export default component$(function PromotionsSection() {
         </div>
 
         <div class="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
-          {promotions.map((promotion) => (
+          {promotions.value.map((promotion) => (
             <article
               key={promotion.id}
               class="group overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 transition-all duration-500 hover:-translate-y-2 hover:border-cyan-400/30 hover:shadow-2xl hover:shadow-cyan-500/10"
@@ -201,7 +217,7 @@ export default component$(function PromotionsSection() {
                     buttonClass="rounded-2xl px-4 py-3 text-sm font-bold"
                     onClick$={() => {
                       if (
-                        !currentUser ||
+                        !getCachedAuthUser() ||
                         localStorage.getItem("bitoll-auth-state") === "guest"
                       ) {
                         loginNotice.value = true;
@@ -238,6 +254,12 @@ export default component$(function PromotionsSection() {
             </article>
           ))}
         </div>
+
+        {!isLoading.value && promotions.value.length === 0 && (
+          <div class="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 text-sm text-slate-300">
+            Ainda nao existem promocoes ativas no Supabase.
+          </div>
+        )}
       </div>
 
       {selectedPromotion && (

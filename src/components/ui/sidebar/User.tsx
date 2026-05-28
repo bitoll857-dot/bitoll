@@ -1,9 +1,24 @@
-import { $, component$, type QRL, useOnWindow, useSignal } from "@builder.io/qwik";
+import {
+  $,
+  component$,
+  type QRL,
+  useOnWindow,
+  useSignal,
+  useVisibleTask$,
+} from "@builder.io/qwik";
 
 import UserAvatar from "../avatar/User";
 import AuthModal from "../modal/Auth";
 import Button from "../button/Button";
-import { currentSession, currentUser } from "~/data/user";
+import {
+  loadAdminAccess,
+  type AdminAccess,
+} from "~/lib/supabase/admin";
+import { signOutFromSupabase } from "~/lib/supabase/auth";
+import {
+  getCachedAuthUser,
+  getSupabaseBrowserClient,
+} from "~/lib/supabase/client";
 import type { AuthMode } from "~/types/auth";
 import type { ContactMethod, CustomerType, User } from "~/types/user";
 
@@ -43,18 +58,33 @@ const customerTypes: CustomerType[] = [
 ];
 
 const contactMethods: ContactMethod[] = ["WhatsApp", "Telefone", "Email"];
+const emptyAdminAccess: AdminAccess = { isAdmin: false, role: null };
+
+const formatSessionStart = (startedAt?: string) => {
+  if (!startedAt) {
+    return "Inicio nao informado";
+  }
+
+  return new Intl.DateTimeFormat("pt-MZ", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(startedAt));
+};
 
 export default component$<UserSidebarProps>(
-({ onClose$, isAuthenticated = !!currentUser }) => {
+({ onClose$, isAuthenticated = false }) => {
   const authModal = useSignal(false);
   const authMode = useSignal<AuthMode>("login");
   const profileModal = useSignal(false);
-  const sessionActive = useSignal(isAuthenticated && !!currentUser);
-  const user = currentUser;
-  const isLoggedIn = sessionActive.value && !!user;
-  const editableUser = useSignal<User | null>(user ? { ...user } : null);
+  const sessionActive = useSignal(isAuthenticated);
+  const user = useSignal<User | null>(null);
+  const adminAccess = useSignal<AdminAccess>(emptyAdminAccess);
+  const sessionStartedAt = useSignal("");
+  const isLoggedIn = sessionActive.value && !!user.value;
+  const editableUser = useSignal<User | null>(null);
   const displayUser = isLoggedIn ? editableUser.value : null;
-  const sessionDuration = formatSessionDuration(currentSession?.startedAt);
+  const sessionDuration = formatSessionDuration(sessionStartedAt.value);
+  const sessionStartLabel = formatSessionStart(sessionStartedAt.value);
   const userDetails = displayUser
     ? [
         { label: "Nome", value: displayUser.name },
@@ -66,8 +96,9 @@ export default component$<UserSidebarProps>(
         { label: "Estado", value: displayUser.status },
         {
           label: "Sessao",
-          value: `${currentSession?.provider ?? "Google"} · ${sessionDuration}`,
+          value: `Google / Supabase - ${sessionDuration}`,
         },
+        { label: "Inicio da sessao", value: sessionStartLabel },
       ]
     : [
         { label: "Estado", value: "Visitante" },
@@ -75,13 +106,21 @@ export default component$<UserSidebarProps>(
         { label: "Historico", value: "Disponivel apos login" },
       ];
 
-  useOnWindow(
-    "load",
-    $(() => {
-      sessionActive.value =
-        !!currentUser && localStorage.getItem("bitoll-auth-state") !== "guest";
-    }),
-  );
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(async () => {
+    user.value = getCachedAuthUser();
+    editableUser.value = user.value ? { ...user.value } : null;
+    sessionActive.value =
+      !!user.value && localStorage.getItem("bitoll-auth-state") !== "guest";
+
+    if (sessionActive.value && !localStorage.getItem("bitoll-auth-started-at")) {
+      localStorage.setItem("bitoll-auth-started-at", new Date().toISOString());
+    }
+
+    sessionStartedAt.value =
+      localStorage.getItem("bitoll-auth-started-at") ?? "";
+    adminAccess.value = await loadAdminAccess();
+  });
 
   useOnWindow(
     "bitoll-auth-change",
@@ -89,8 +128,47 @@ export default component$<UserSidebarProps>(
       sessionActive.value =
         !!(event as CustomEvent<{ isAuthenticated: boolean }>).detail
           ?.isAuthenticated;
+      user.value =
+        (event as CustomEvent<{ user?: User | null }>).detail?.user ??
+        getCachedAuthUser();
+      editableUser.value = user.value ? { ...user.value } : null;
+      sessionStartedAt.value =
+        localStorage.getItem("bitoll-auth-started-at") ?? "";
     }),
   );
+
+  const saveProfile$ = $(async () => {
+    const nextUser = editableUser.value;
+
+    if (!nextUser) {
+      return;
+    }
+
+    const supabase = getSupabaseBrowserClient();
+
+    if (supabase) {
+      await supabase
+        .from("profiles")
+        .update({
+          full_name: nextUser.name,
+          phone: nextUser.phone,
+          customer_type: nextUser.customerType,
+          city: nextUser.city,
+          preferred_contact_method: nextUser.preferredContactMethod,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", String(nextUser.id));
+    }
+
+    user.value = nextUser;
+    localStorage.setItem("bitoll-auth-user", JSON.stringify(nextUser));
+    window.dispatchEvent(
+      new CustomEvent("bitoll-auth-change", {
+        detail: { isAuthenticated: true, user: nextUser },
+      }),
+    );
+    profileModal.value = false;
+  });
 
   return (
     <div class="fixed inset-0 z-[100]">
@@ -127,7 +205,7 @@ export default component$<UserSidebarProps>(
           <div class="rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-6">
             <div class="flex items-center gap-4">
               <UserAvatar
-                avatarUrl={user?.avatarUrl}
+                avatarUrl={isLoggedIn ? user.value?.avatarUrl : ""}
                 isAuthenticated={isLoggedIn}
                 name={displayUser?.name}
                 size="lg"
@@ -264,24 +342,35 @@ export default component$<UserSidebarProps>(
             </Button>
 
             {isLoggedIn && (
+              <>
+                {adminAccess.value.isAdmin && (
+                  <Button
+                    variant="custom"
+                    size="none"
+                    fullWidth
+                    spacing="none"
+                    buttonClass="flex w-full items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-4 text-sm font-semibold text-emerald-200 hover:border-emerald-400/50 hover:bg-emerald-400/20"
+                    onClick$={() => {
+                      window.location.href = "/admin";
+                    }}
+                  >
+                    Entrar como admin
+                  </Button>
+                )}
+
               <Button
                 variant="secondary"
                 size="none"
                 fullWidth
                 spacing="none"
                 buttonClass="flex w-full items-center justify-center rounded-2xl px-5 py-4 text-sm font-semibold"
-                onClick$={() => {
-                  sessionActive.value = false;
-                  localStorage.setItem("bitoll-auth-state", "guest");
-                  window.dispatchEvent(
-                    new CustomEvent("bitoll-auth-change", {
-                      detail: { isAuthenticated: false },
-                    }),
-                  );
+                onClick$={async () => {
+                  await signOutFromSupabase();
                 }}
               >
                 Terminar sessao
               </Button>
+              </>
             )}
           </div>
         </div>
@@ -457,9 +546,7 @@ export default component$<UserSidebarProps>(
                   type="submit"
                   spacing="none"
                   buttonClass="rounded-2xl px-5 py-3 text-sm font-bold"
-                  onClick$={() => {
-                    profileModal.value = false;
-                  }}
+                  onClick$={saveProfile$}
                 >
                   Guardar alteracoes
                 </Button>

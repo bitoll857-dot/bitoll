@@ -21,6 +21,7 @@ errorOnDuplicatesPkgDeps(devDependencies, dependencies);
 
 export default defineConfig(({ command, mode }): UserConfig => {
   return {
+    envPrefix: ["VITE_", "PUBLIC_"],
     plugins: [
       qwikCity(),
       qwikVite(),

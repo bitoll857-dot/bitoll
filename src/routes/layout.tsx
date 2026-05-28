@@ -1,12 +1,16 @@
 import { component$, Slot } from "@builder.io/qwik";
+import { useLocation } from "@builder.io/qwik-city";
 
 import CustomerProjectsButton from "~/components/ui/projects";
 
 export default component$(() => {
+  const location = useLocation();
+  const isAdminRoute = location.url.pathname.startsWith("/admin");
+
   return (
     <>
       <Slot />
-      <CustomerProjectsButton />
+      {!isAdminRoute && <CustomerProjectsButton />}
     </>
   );
 });

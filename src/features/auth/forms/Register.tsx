@@ -1,9 +1,10 @@
-import { component$ } from "@builder.io/qwik";
+import { component$, type QRL, useSignal } from "@builder.io/qwik";
 
 import PasswordField from "../fields/Password";
 import SelectField from "../fields/Select";
 import TextField from "../fields/Text";
 import Button from "../button/Button";
+import { signInWithGoogle, signUpWithPassword } from "~/lib/supabase/auth";
 
 const customerTypeOptions = [
   { label: "Particular", value: "Particular" },
@@ -12,9 +13,92 @@ const customerTypeOptions = [
   { label: "Industria", value: "Industria" },
 ];
 
-export default component$(() => {
+type RegisterFormProps = {
+  onAuthenticated$?: QRL<() => Promise<void> | void>;
+};
+
+export default component$<RegisterFormProps>(({ onAuthenticated$ }) => {
+  const errorMessage = useSignal("");
+  const successMessage = useSignal("");
+  const isSubmitting = useSignal(false);
+
   return (
-    <form preventdefault:submit class="mt-6 space-y-5">
+    <form
+      preventdefault:submit
+      class="mt-6 space-y-5"
+      onSubmit$={async (event) => {
+        const form = event.target as HTMLFormElement;
+        const formData = new FormData(form);
+        const password = String(formData.get("password") ?? "");
+        const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+        errorMessage.value = "";
+        successMessage.value = "";
+
+        if (password !== confirmPassword) {
+          errorMessage.value = "As palavras-passe nao coincidem.";
+          return;
+        }
+
+        isSubmitting.value = true;
+
+        const result = await signUpWithPassword({
+          city: String(formData.get("city") ?? "").trim(),
+          customerType: String(formData.get("customerType") ?? "Particular"),
+          email: String(formData.get("email") ?? "").trim(),
+          name: String(formData.get("name") ?? "").trim(),
+          password,
+          phone: String(formData.get("phone") ?? "").trim(),
+        });
+
+        isSubmitting.value = false;
+
+        if (!result.ok) {
+          errorMessage.value = result.message;
+          return;
+        }
+
+        successMessage.value = result.message;
+
+        if (result.hasSession) {
+          await onAuthenticated$?.();
+        }
+      }}
+    >
+      <Button
+        type="button"
+        variant="secondary"
+        fullWidth
+        spacing="none"
+        buttonClass="flex h-12 items-center justify-center rounded-2xl text-sm font-bold"
+        onClick$={async () => {
+          errorMessage.value = "";
+          successMessage.value = "";
+          isSubmitting.value = true;
+
+          const result = await signInWithGoogle();
+
+          isSubmitting.value = false;
+
+          if (!result.ok) {
+            errorMessage.value = result.message;
+            return;
+          }
+
+          successMessage.value = result.message;
+        }}
+      >
+        Criar com Google
+      </Button>
+
+      <div class="flex items-center gap-3">
+        <div class="h-px flex-1 bg-slate-800" />
+        <span class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+          ou
+        </span>
+        <div class="h-px flex-1 bg-slate-800" />
+      </div>
+
       <TextField
         id="register-name"
         label="Nome completo"
@@ -102,8 +186,21 @@ export default component$(() => {
         spacing="none"
         buttonClass="flex h-12 items-center justify-center rounded-2xl text-sm font-bold"
       >
-        Criar conta
+        {isSubmitting.value ? "A criar..." : "Criar conta"}
       </Button>
+
+      {(errorMessage.value || successMessage.value) && (
+        <p
+          class={[
+            "rounded-2xl border px-4 py-3 text-sm leading-6",
+            errorMessage.value
+              ? "border-red-400/30 bg-red-400/10 text-red-200"
+              : "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+          ]}
+        >
+          {errorMessage.value || successMessage.value}
+        </p>
+      )}
     </form>
   );
 });

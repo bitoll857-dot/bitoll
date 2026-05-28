@@ -24,7 +24,7 @@ interface ButtonProps {
     | "evenly";
 
   fullWidth?: boolean;
-  onClick$?: QRL<() => void>;
+  onClick$?: QRL<() => Promise<void> | void>;
   type?: "button" | "submit" | "reset";
   ariaLabel?: string;
   wrapperClass?: string;

@@ -1,4 +1,9 @@
-import { component$, type QRL, useSignal } from "@builder.io/qwik";
+import {
+  component$,
+  type QRL,
+  useSignal,
+  useVisibleTask$,
+} from "@builder.io/qwik";
 
 import ProductDetailCard from "../cards/ProductDetail";
 import ProductsTable from "../table/Products";
@@ -8,10 +13,11 @@ import AuthModal from "../modal/Auth";
 import Button from "../button/Button";
 import ActionToast from "../toast";
 
-import { currentUser } from "~/data/user";
-import { getServiceProducts } from "~/data/service-products";
+import { getCachedAuthUser } from "~/lib/supabase/client";
+import { loadServiceProductsFromSupabase } from "~/lib/supabase/platform-data";
 
 import type { StructureType } from "~/types/service-products";
+import type { ServiceProduct } from "~/types/service-products";
 import type { AuthMode } from "~/types/auth";
 
 type ServiceProductsModalProps = {
@@ -32,11 +38,19 @@ export default component$<ServiceProductsModalProps>(
     const loginNotice = useSignal(false);
     const authModal = useSignal(false);
     const authMode = useSignal<AuthMode>("login");
+    const products = useSignal<ServiceProduct[]>([]);
+    const productsLoading = useSignal(true);
 
-    const products = getServiceProducts(
-      serviceSlug,
-      structureType.value,
-    );
+    // eslint-disable-next-line qwik/no-use-visible-task
+    useVisibleTask$(async ({ track }) => {
+      track(() => structureType.value);
+      productsLoading.value = true;
+      products.value = await loadServiceProductsFromSupabase(
+        serviceSlug,
+        structureType.value,
+      );
+      productsLoading.value = false;
+    });
 
     const initialData = useSignal({
       service: "",
@@ -44,12 +58,12 @@ export default component$<ServiceProductsModalProps>(
       originLabel: "",
       source: "",
       structureType: "",
-      products,
+      products: products.value,
       discountAmount: 0,
       currency: "MZN",
     });
 
-    const selectedProduct = products.find(
+    const selectedProduct = products.value.find(
       (product) => product.id === selectedProductId.value,
     );
 
@@ -102,7 +116,7 @@ export default component$<ServiceProductsModalProps>(
 
             <div class="mt-6">
               <ProductsTable
-                products={products}
+                products={products.value}
                 selectedProductId={selectedProductId.value ?? undefined}
                 onSelectProduct$={(productId) => {
                   selectedProductId.value =
@@ -119,9 +133,9 @@ export default component$<ServiceProductsModalProps>(
               </div>
             )}
 
-            {products.length === 0 && (
+            {!productsLoading.value && products.value.length === 0 && (
               <div class="mt-6 rounded-3xl border border-slate-800 bg-slate-900/60 p-6 text-sm text-slate-300">
-                Ainda nao existem produtos definidos para esta combinacao.
+                Ainda nao existem produtos desta estrutura no Supabase.
               </div>
             )}
           </div>
@@ -132,7 +146,7 @@ export default component$<ServiceProductsModalProps>(
               buttonClass="rounded-2xl px-5 py-3 text-sm font-bold"
               onClick$={() => {
                 if (
-                  !currentUser ||
+                  !getCachedAuthUser() ||
                   localStorage.getItem("bitoll-auth-state") === "guest"
                 ) {
                   loginNotice.value = true;
@@ -145,7 +159,7 @@ export default component$<ServiceProductsModalProps>(
                   originLabel: `servico ${serviceTitle}`,
                   source: "service-products",
                   structureType: structureType.value,
-                  products,
+                  products: products.value,
                   discountAmount: 0,
                   currency: "MZN",
                 };

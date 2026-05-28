@@ -1,4 +1,4 @@
-import { component$, useSignal } from "@builder.io/qwik";
+import { $, component$, useOnWindow, useSignal } from "@builder.io/qwik";
 
 import AuthModal from "../modal/Auth";
 import QuoteRequestModal from "../modal/QuoteRequest";
@@ -6,7 +6,7 @@ import ActionToast from "~/components/ui/toast";
 
 import Button from "~/components/ui/button/Button";
 import HeroVisual from "~/components/visual/Hero";
-import { currentUser } from "~/data/user";
+import { getCachedAuthUser } from "~/lib/supabase/client";
 
 import type { AuthMode } from "~/types/auth";
 
@@ -24,7 +24,28 @@ export default component$(() => {
     source: "",
   });
 
-  const isLoggedIn = !!currentUser;
+  const authReady = useSignal(false);
+  const isLoggedIn = useSignal(false);
+
+  useOnWindow(
+    "load",
+    $(() => {
+      isLoggedIn.value =
+        !!getCachedAuthUser() &&
+        localStorage.getItem("bitoll-auth-state") !== "guest";
+      authReady.value = true;
+    }),
+  );
+
+  useOnWindow(
+    "bitoll-auth-change",
+    $((event) => {
+      isLoggedIn.value =
+        !!(event as CustomEvent<{ isAuthenticated: boolean }>).detail
+          ?.isAuthenticated;
+      authReady.value = true;
+    }),
+  );
 
   return (
     <section class="relative overflow-hidden">
@@ -54,7 +75,7 @@ export default component$(() => {
                 variant="primary"
                 onClick$={() => {
                   if (
-                    !currentUser ||
+                    !getCachedAuthUser() ||
                     localStorage.getItem("bitoll-auth-state") === "guest"
                   ) {
                     loginNotice.value = true;
@@ -76,7 +97,7 @@ export default component$(() => {
               {/* PROMOTION BUTTON */}
               
 
-              {!isLoggedIn && (
+              {authReady.value && !isLoggedIn.value && (
                 <Button
                   variant="secondary"
                   onClick$={() => {

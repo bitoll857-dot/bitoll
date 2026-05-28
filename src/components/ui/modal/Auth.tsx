@@ -57,7 +57,11 @@ export default component$<AuthModalProps>(
             <AuthTabs mode={mode} onModeChange$={onModeChange$} />
           </div>
 
-          {isLogin ? <LoginForm /> : <RegisterForm />}
+          {isLogin ? (
+            <LoginForm onAuthenticated$={onClose$} />
+          ) : (
+            <RegisterForm onAuthenticated$={onClose$} />
+          )}
         </div>
       </div>
     );

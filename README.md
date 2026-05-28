@@ -57,3 +57,14 @@ No futuro, estes dados podem ser ligados a uma API, base de dados, CMS ou outro 
 ```bash
 npm install
 npm start
+
+funcionalidades actuais da plataforma
+cotação semi-automática
+upload de imagens
+promoções com factura, IVA e total
+acessibilidade
+sessão/logout
+dados estáticos
+estrutura de pastas
+comandos de validação
+equipa/desenvolvimento da plataforma

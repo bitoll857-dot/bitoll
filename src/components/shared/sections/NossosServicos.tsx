@@ -1,12 +1,19 @@
-import { component$ } from "@builder.io/qwik";
+import { component$, useSignal, useVisibleTask$ } from "@builder.io/qwik";
 import { useNavigate } from "@builder.io/qwik-city";
 
 import Button from "../button/Button"
 import ServiceCard from "../cards/Servicos";
-import { services } from "~/data/services";
+import { loadServicesFromSupabase } from "~/lib/supabase/platform-data";
+import type { Service } from "~/types/services";
 
 export default component$(function ServicesSection() {
   const navigate = useNavigate();
+  const services = useSignal<Service[]>([]);
+
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(async () => {
+    services.value = await loadServicesFromSupabase();
+  });
 
   return (
     <section class="py-6">
@@ -26,7 +33,7 @@ export default component$(function ServicesSection() {
 
         {/* GRID */}
         <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {services.map((service) => (
+          {services.value.map((service) => (
             <ServiceCard
               key={service.title}
               title={service.title}

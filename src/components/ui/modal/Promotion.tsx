@@ -5,7 +5,7 @@ import type { Promotion } from "~/types/promotion";
 import QuoteRequestModal from "../modal/QuoteRequest";
 import AuthModal from "../modal/Auth";
 import ActionToast from "../toast";
-import { currentUser } from "~/data/user";
+import { getCachedAuthUser } from "~/lib/supabase/client";
 import type { AuthMode } from "~/types/auth";
 
 type PromotionDetailsModalProps = {
@@ -287,7 +287,7 @@ export default component$<PromotionDetailsModalProps>(
               buttonClass="rounded-2xl px-5 py-3 text-sm font-bold"
               onClick$={() => {
                 if (
-                  !currentUser ||
+                  !getCachedAuthUser() ||
                   localStorage.getItem("bitoll-auth-state") === "guest"
                 ) {
                   loginNotice.value = true;

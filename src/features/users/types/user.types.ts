@@ -3,7 +3,7 @@ export type CustomerType = "Particular" | "Empresa" | "Condominio" | "Industria"
 export type ContactMethod = "WhatsApp" | "Telefone" | "Email";
 
 export interface User {
-  id: number;
+  id: number | string;
   name: string;
   email: string;
   phone: string;

@@ -1,12 +1,21 @@
-import { component$, useSignal } from "@builder.io/qwik";
+import { component$, useSignal, useVisibleTask$ } from "@builder.io/qwik";
 
 import ServiceProductsModal from "../modal/ServiceProducts";
 import Button from "../button/Button";
-import { services } from "~/data/services";
+import { loadServicesFromSupabase } from "~/lib/supabase/platform-data";
+import type { Service } from "~/types/services";
 
 export default component$(function ServicesSection() {
   const selectedServiceSlug = useSignal<string | null>(null);
   const selectedServiceTitle = useSignal("");
+  const services = useSignal<Service[]>([]);
+  const isLoading = useSignal(true);
+
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(async () => {
+    services.value = await loadServicesFromSupabase();
+    isLoading.value = false;
+  });
 
   return (
     <section class="relative overflow-hidden bg-slate-950 py-10">
@@ -31,7 +40,7 @@ export default component$(function ServicesSection() {
       <div class="container relative z-10 mx-auto p-6">
         {/* Services Grid */}
         <div class="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
-          {services.map((service) => {
+          {services.value.map((service) => {
             const Image = service.image;
             const serviceSlug = service.slug;
             const serviceTitle = service.title;
@@ -84,7 +93,7 @@ export default component$(function ServicesSection() {
                         aria-label={`Ver produtos para ${serviceTitle}`}
                         buttonClass="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900/70 text-2xl transition-all duration-300 group-hover:translate-x-1 group-hover:border-cyan-400 group-hover:bg-cyan-400/10 group-hover:text-cyan-400"
                         onClick$={() => {
-                          selectedServiceSlug.value = serviceSlug;
+                          selectedServiceSlug.value = serviceSlug ?? null;
                           selectedServiceTitle.value = serviceTitle;
                         }}
                       >
@@ -97,6 +106,12 @@ export default component$(function ServicesSection() {
             );
           })}
         </div>
+
+        {!isLoading.value && services.value.length === 0 && (
+          <div class="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 text-sm text-slate-300">
+            Ainda nao existem servicos publicados no Supabase.
+          </div>
+        )}
       </div>
 
       {selectedServiceSlug.value && (

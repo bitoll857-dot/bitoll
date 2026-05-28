@@ -17,7 +17,8 @@ import UserSidebar from "../sidebar/User";
 import UserAvatar from "../avatar/User";
 
 import { headerLinks } from "~/data/links";
-import { currentUser } from "~/data/user";
+import { getCachedAuthUser } from "~/lib/supabase/client";
+import type { User } from "~/types/user";
 
 import { searchEverything } from "~/utils/search";
 
@@ -47,7 +48,9 @@ export default component$(() => {
   const userSidebar = useSignal(false);
 
   const accessibilityModal = useSignal(false);
-  const isAuthenticated = useSignal(!!currentUser);
+  const authReady = useSignal(false);
+  const isAuthenticated = useSignal(false);
+  const authUser = useSignal<User | null>(null);
 
   /*
    |--------------------------------------------------------------------------
@@ -64,8 +67,11 @@ export default component$(() => {
   useOnWindow(
     "load",
     $(() => {
+      authUser.value = getCachedAuthUser();
       isAuthenticated.value =
-        !!currentUser && localStorage.getItem("bitoll-auth-state") !== "guest";
+        !!authUser.value &&
+        localStorage.getItem("bitoll-auth-state") !== "guest";
+      authReady.value = true;
     }),
   );
 
@@ -75,6 +81,10 @@ export default component$(() => {
       isAuthenticated.value =
         !!(event as CustomEvent<{ isAuthenticated: boolean }>).detail
           ?.isAuthenticated;
+      authUser.value =
+        (event as CustomEvent<{ user?: User | null }>).detail?.user ??
+        getCachedAuthUser();
+      authReady.value = true;
     }),
   );
 
@@ -183,9 +193,9 @@ export default component$(() => {
               }}
             >
               <UserAvatar
-                avatarUrl={isAuthenticated.value ? currentUser?.avatarUrl : ""}
-                isAuthenticated={isAuthenticated.value}
-                name={isAuthenticated.value ? currentUser?.name : undefined}
+                avatarUrl={isAuthenticated.value ? authUser.value?.avatarUrl : ""}
+                isAuthenticated={authReady.value && isAuthenticated.value}
+                name={isAuthenticated.value ? authUser.value?.name : undefined}
               />
             </button>
 
@@ -201,9 +211,9 @@ export default component$(() => {
               }}
             >
               <UserAvatar
-                avatarUrl={isAuthenticated.value ? currentUser?.avatarUrl : ""}
-                isAuthenticated={isAuthenticated.value}
-                name={isAuthenticated.value ? currentUser?.name : undefined}
+                avatarUrl={isAuthenticated.value ? authUser.value?.avatarUrl : ""}
+                isAuthenticated={authReady.value && isAuthenticated.value}
+                name={isAuthenticated.value ? authUser.value?.name : undefined}
               />
             </button>
 
