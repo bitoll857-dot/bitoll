@@ -12,6 +12,11 @@ const supabaseAnonKey =
   import.meta.env.PUBLIC_SUPABASE_ANON_KEY ??
   import.meta.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
   "";
+const publicSiteUrl =
+  import.meta.env.PUBLIC_SITE_URL ??
+  import.meta.env.PUBLIC_APP_URL ??
+  import.meta.env.PUBLIC_BASE_URL ??
+  "";
 
 let browserClient: SupabaseClient | null = null;
 
@@ -26,6 +31,36 @@ export const isSupabaseConfigured = () =>
   supabaseAnonKey.length > 0 &&
   !supabaseUrl.includes("your-project-ref") &&
   !supabaseAnonKey.includes("your-supabase-anon-key");
+
+const normalizeOrigin = (origin: string) => origin.trim().replace(/\/+$/, "");
+
+const isLocalOrigin = (origin: string) => {
+  try {
+    const { hostname } = new URL(origin);
+
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1"
+    );
+  } catch {
+    return false;
+  }
+};
+
+const getConfiguredSiteOrigin = () => {
+  const origin = normalizeOrigin(publicSiteUrl);
+
+  if (!origin) {
+    return "";
+  }
+
+  try {
+    return new URL(origin).origin;
+  } catch {
+    return "";
+  }
+};
 
 export const getSupabaseBrowserClient = () => {
   if (!isSupabaseConfigured()) {
@@ -47,11 +82,25 @@ export const getSupabaseBrowserClient = () => {
 };
 
 export const getAuthRedirectUrl = () => {
+  const configuredOrigin = getConfiguredSiteOrigin();
+
   if (typeof window === "undefined") {
-    return "/auth/callback";
+    return configuredOrigin
+      ? `${configuredOrigin}/auth/callback`
+      : "/auth/callback";
   }
 
-  return `${window.location.origin}/auth/callback`;
+  const runtimeOrigin = window.location.origin;
+
+  if (isLocalOrigin(runtimeOrigin)) {
+    return `${runtimeOrigin}/auth/callback`;
+  }
+
+  if (configuredOrigin && !isLocalOrigin(configuredOrigin)) {
+    return `${configuredOrigin}/auth/callback`;
+  }
+
+  return `${runtimeOrigin}/auth/callback`;
 };
 
 const getStringMetadata = (
