@@ -13,10 +13,15 @@ export default component$(() => {
   const nav = useNavigate();
 
   useVisibleTask$(async () => {
+    const hasHashSession = window.location.hash.includes("access_token=");
     const code = new URLSearchParams(window.location.search).get("code");
     const result = code
       ? await exchangeSupabaseAuthCode(code)
       : await syncSupabaseAuthSession();
+
+    if (hasHashSession) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
 
     status.value = result.message;
     hasError.value = !result.ok;

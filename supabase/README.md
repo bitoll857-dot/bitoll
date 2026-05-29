@@ -14,7 +14,8 @@
    - `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`
 7. In Supabase Auth URL configuration, add the app URL:
    - Local: `http://localhost:5173/auth/callback`
-   - Production: `https://YOUR_DOMAIN/auth/callback`
+   - Production: `https://bitoll.vercel.app/auth/callback`
+   - Site URL: `https://bitoll.vercel.app`
 
 The app uses Supabase Auth for login and keeps the first local fallback until
 the remaining simulated services, promotions, projects, quotes and chat data
