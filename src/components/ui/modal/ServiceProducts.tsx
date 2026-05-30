@@ -14,9 +14,15 @@ import Button from "../button/Button";
 import ActionToast from "../toast";
 
 import { getCachedAuthUser } from "~/lib/supabase/client";
-import { loadServiceProductsFromSupabase } from "~/lib/supabase/platform-data";
+import {
+  loadServiceProductsFromSupabase,
+  loadServiceStructureOptionsFromSupabase,
+} from "~/lib/supabase/platform-data";
 
-import type { StructureType } from "~/types/service-products";
+import type {
+  ServiceStructureOption,
+  StructureType,
+} from "~/types/service-products";
 import type { ServiceProduct } from "~/types/service-products";
 import type { AuthMode } from "~/types/auth";
 
@@ -40,10 +46,36 @@ export default component$<ServiceProductsModalProps>(
     const authMode = useSignal<AuthMode>("login");
     const products = useSignal<ServiceProduct[]>([]);
     const productsLoading = useSignal(true);
+    const structureOptions = useSignal<ServiceStructureOption[]>([]);
+    const structuresLoading = useSignal(true);
+
+    // eslint-disable-next-line qwik/no-use-visible-task
+    useVisibleTask$(async () => {
+      structuresLoading.value = true;
+      const options = await loadServiceStructureOptionsFromSupabase(serviceSlug);
+      structureOptions.value = options;
+
+      if (
+        options.length > 0 &&
+        !options.some((option) => option.value === structureType.value)
+      ) {
+        structureType.value = options[0].value;
+      }
+
+      structuresLoading.value = false;
+    });
 
     // eslint-disable-next-line qwik/no-use-visible-task
     useVisibleTask$(async ({ track }) => {
       track(() => structureType.value);
+      track(() => structureOptions.value.length);
+
+      if (structureOptions.value.length === 0) {
+        products.value = [];
+        productsLoading.value = false;
+        return;
+      }
+
       productsLoading.value = true;
       products.value = await loadServiceProductsFromSupabase(
         serviceSlug,
@@ -105,14 +137,27 @@ export default component$<ServiceProductsModalProps>(
           </div>
 
           <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8">
-            <StructureSelector
-              value={structureType.value}
-              onChange$={(value) => {
-                structureType.value = value;
+            {structuresLoading.value ? (
+              <div class="rounded-3xl border border-slate-800 bg-slate-900/50 p-6 text-sm text-slate-300">
+                A carregar opcoes deste servico...
+              </div>
+            ) : structureOptions.value.length > 0 ? (
+              <StructureSelector
+                options={structureOptions.value}
+                value={structureType.value}
+                onChange$={(value) => {
+                  structureType.value = value;
 
-                selectedProductId.value = null;
-              }}
-            />
+                  selectedProductId.value = null;
+                }}
+              />
+            ) : (
+              <div class="rounded-3xl border border-amber-400/30 bg-amber-400/10 p-6 text-sm leading-6 text-amber-100">
+                Este servico ainda nao tem estruturas publicas cadastradas na
+                base de dados. Crie as opcoes no admin em Estruturas para que
+                os produtos necessarios aparecam corretamente.
+              </div>
+            )}
 
             <div class="mt-6">
               <ProductsTable
@@ -145,6 +190,11 @@ export default component$<ServiceProductsModalProps>(
               spacing="none"
               buttonClass="rounded-2xl px-5 py-3 text-sm font-bold"
               onClick$={() => {
+                if (structureOptions.value.length === 0) {
+                  loginNotice.value = true;
+                  return;
+                }
+
                 if (
                   !getCachedAuthUser() ||
                   localStorage.getItem("bitoll-auth-state") === "guest"
@@ -183,13 +233,27 @@ export default component$<ServiceProductsModalProps>(
 
         <ActionToast
           isOpen={loginNotice.value}
-          title="Login necessario"
-          message="Esta cotacao sera ligada aos seus dados e ao acompanhamento do pedido."
-          actionLabel="Entrar"
+          title={
+            structureOptions.value.length === 0
+              ? "Estrutura em falta"
+              : "Login necessario"
+          }
+          message={
+            structureOptions.value.length === 0
+              ? "Ainda nao existem estruturas publicas cadastradas para este servico."
+              : "Esta cotacao sera ligada aos seus dados e ao acompanhamento do pedido."
+          }
+          actionLabel={
+            structureOptions.value.length === 0 ? undefined : "Entrar"
+          }
           onClose$={() => {
             loginNotice.value = false;
           }}
           onAction$={() => {
+            if (structureOptions.value.length === 0) {
+              return;
+            }
+
             loginNotice.value = false;
             authMode.value = "login";
             authModal.value = true;

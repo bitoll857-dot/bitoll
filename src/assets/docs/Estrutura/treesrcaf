@@ -1,0 +1,552 @@
+D:\BITTOL\PROJECTS-WEB\BITOLL\SRC
+|   entry.dev.tsx
+|   entry.preview.tsx
+|   entry.ssr.tsx
+|   entry.vercel-edge.tsx
+|   global.css
+|   root.tsx
+|
++---app
+|   +---config
+|   +---contexts
+|   +---middleware
+|   \---providers
++---assets
+|   +---docs
+|   |   \---Proforma
+|   |       |   Camera Analogicas.docx
+|   |       |   Camera IP.docx
+|   |       |   Camera Wi-fi.docx
+|   |       |   Cerca Electrica.docx
+|   |       |   Kit de Internet.docx
+|   |       |   Modelo.xlsx
+|   |       |
+|   |       \---PDF
+|   |           |   0012026 Kit de cerca 17x35.pdf
+|   |           |   0022026 Kit 4 cameras colorida noturna.pdf
+|   |           |   0032026 Kit 4 cameras sem coloração noturna.pdf
+|   |           |   0042026 Kit de cerca 40x35.pdf
+|   |           |   0052026 Kit de cerca 55x31.pdf
+|   |           |   0062026 Kit de cerca 20x30.pdf
+|   |           |   0072026 Kit de cerca 30x15.pdf
+|   |           |   0082026 Kit de 4 cameras Wi-Fi Ezviz H6C.pdf
+|   |           |   0102026 Kit 4 cameras sem coloração noturna.pdf
+|   |           |   0112026 Kit 4 cameras colorida noturna.pdf
+|   |           |   0262026 Kit de internet Starlink Standard V4.pdf
+|   |           |   0272026 Kit de internet Starlink Mini.pdf
+|   |           |
+|   |           +---Atualizados desde o final de Março de 2026
+|   |           |       043026 Kit 4 cameras colorida Hikvision.pdf
+|   |           |       044026 Kit 4 cameras simples Hikvision.pdf
+|   |           |       045026 Kit 4 cameras IP Tiandy.pdf
+|   |           |
+|   |           +---Muzammil, Tete
+|   |           |       Promo-0142026 Kit 4 cameras colorida noturna.pdf
+|   |           |       Promo-0152026 Kit 2 cameras colorida noturna.pdf
+|   |           |       Promo-0162026 Kit 6 cameras colorida noturna.pdf
+|   |           |       Promo-0172026 Kit 8 cameras colorida noturna.pdf
+|   |           |       Promo-0182026 Kit de 40x35m cerca electrica.pdf
+|   |           |       Promo-0192026 Kit de 17x35m cerca electrica.pdf
+|   |           |       Promo-0202026 Kit de 55x31m cerca electrica.pdf
+|   |           |       Promo-0212026 Kit de 20x30m cerca electrica.pdf
+|   |           |       Promo-0222026 Kit de 15x30m cerca electrica.pdf
+|   |           |       Promo-0232026 Kit de 60x60m cerca electrica.pdf
+|   |           |       Promo-0242026 Kit de 40x40m cerca electrica.pdf
+|   |           |       Promo-0252026 Kit de 40m linear cerca electrica.pdf
+|   |           |       Promo-0352026 Kit de 20x40m cerca electrica.pdf
+|   |           |       Promo-0359026 Kit de 20x52m cerca electrica.pdf
+|   |           |
+|   |           \---Personalizado
+|   |                   0092026 Kit 4 cameras colorida noturna Personalizada.pdf
+|   |                   0492026 Kit de 12 cameras coloridas personalizada Sr. Cadangue.pdf
+|   |                   Bitoll 0372026 Camera Analogicas Hikvision- Tete, Francisco Many - Personalizada.pdf
+|   |                   Bitoll 0382026 Camera Analogicas UNV - Tete, Francisco Many - Personalizada.pdf
+|   |                   Bitoll 0392026 Camera IP Tiandy Tete, Francisco Many - Personalizada.pdf
+|   |                   Bitoll 0402026 Camera Analogicas UNV - Tete, Francisco Many - Personalizada.pdf
+|   |                   Bitoll 0412026 Camera Analogicas Hikvision- Tete, Francisco Many - Personalizada.pdf
+|   |                   Bitoll 0422026 Camera IP Tiandy Tete, Francisco Many - Personalizada.pdf
+|   |                   Bitoll Kit 2 Cameras ColorVu Hikvision Personalizada para Sr. Tobias.pdf
+|   |                   Bitoll Kit 3 Cameras ColorVu Hikvision Personalizada para Sr. Muzondi.pdf
+|   |
+|   +---fonts
+|   +---icons
+|   +---images
+|   |   +---backgrounds
+|   |   +---banners
+|   |   +---illustrations
+|   |   +---logos
+|   |   \---patterns
+|   +---lottie
+|   \---videos
++---components
+|   +---layouts
+|   +---shared
+|   |   +---avatar
+|   |   |       User.tsx
+|   |   |
+|   |   +---button
+|   |   |       Accessibility.tsx
+|   |   |       Button.tsx
+|   |   |
+|   |   +---cards
+|   |   |       Servicos.tsx
+|   |   |
+|   |   +---footer
+|   |   |       Footer.tsx
+|   |   |
+|   |   +---header
+|   |   |       Header.tsx
+|   |   |
+|   |   +---hero
+|   |   |       Hero.tsx
+|   |   |
+|   |   +---link
+|   |   |       Header.tsx
+|   |   |
+|   |   +---menu
+|   |   |       Mobile.tsx
+|   |   |
+|   |   +---modal
+|   |   |       Accessibility.tsx
+|   |   |       Auth.tsx
+|   |   |       Promotion.tsx
+|   |   |       QuoteRequest.tsx
+|   |   |       Search.tsx
+|   |   |       ServiceProducts.tsx
+|   |   |
+|   |   +---router-head
+|   |   |       router-head.tsx
+|   |   |
+|   |   +---sections
+|   |   |       CTA.tsx
+|   |   |       Footer.tsx
+|   |   |       NossosServicos.tsx
+|   |   |       NossosServicosPage.tsx
+|   |   |       Promocoes.tsx
+|   |   |       Sobre.tsx
+|   |   |
+|   |   \---sidebar
+|   |           User.tsx
+|   |
+|   +---ui
+|   |   +---avatar
+|   |   |       User.tsx
+|   |   |
+|   |   +---button
+|   |   |       Accessibility.tsx
+|   |   |       Button.tsx
+|   |   |
+|   |   +---card
+|   |   |       ProductDetail.tsx
+|   |   |       Servicos.tsx
+|   |   |
+|   |   +---cards
+|   |   |       ProductDetail.tsx
+|   |   |
+|   |   +---dropdown
+|   |   +---fields
+|   |   |       Password.tsx
+|   |   |       Select.tsx
+|   |   |       Text.tsx
+|   |   |
+|   |   +---forms
+|   |   |       Login.tsx
+|   |   |       QuoteRequest.tsx
+|   |   |       Register.tsx
+|   |   |
+|   |   +---guide
+|   |   |       index.ts
+|   |   |       VisitorGuide.tsx
+|   |   |
+|   |   +---input
+|   |   |       Password.tsx
+|   |   |       Text.tsx
+|   |   |       TextInput.tsx
+|   |   |
+|   |   +---link
+|   |   |       Header.tsx
+|   |   |
+|   |   +---menu
+|   |   |       Mobile.tsx
+|   |   |
+|   |   +---modal
+|   |   |       AboutBitoll.tsx
+|   |   |       Accessibility.tsx
+|   |   |       Auth.tsx
+|   |   |       DeveloperCredits.tsx
+|   |   |       Modal.tsx
+|   |   |       Promotion.tsx
+|   |   |       QuoteRequest.tsx
+|   |   |       Search.tsx
+|   |   |       ServiceProducts.tsx
+|   |   |
+|   |   +---navigation
+|   |   |       Header.tsx
+|   |   |
+|   |   +---options
+|   |   |       Accessibility.tsx
+|   |   |
+|   |   +---projects
+|   |   |       CustomerProjectsButton.tsx
+|   |   |       index.ts
+|   |   |
+|   |   +---sections
+|   |   |       Footer.tsx
+|   |   |       NossosServicosPage.tsx
+|   |   |       Promocoes.tsx
+|   |   |
+|   |   +---segments
+|   |   |       Accessibility.tsx
+|   |   |
+|   |   +---select
+|   |   |       Select.tsx
+|   |   |
+|   |   +---selector
+|   |   |       Structure.tsx
+|   |   |
+|   |   +---sidebar
+|   |   |       User.tsx
+|   |   |
+|   |   +---skeleton
+|   |   +---spinner
+|   |   +---table
+|   |   |       Products.tsx
+|   |   |       Search.tsx
+|   |   |
+|   |   +---tabs
+|   |   |       Auth.tsx
+|   |   |
+|   |   +---toast
+|   |   |       ActionToast.tsx
+|   |   |       index.ts
+|   |   |
+|   |   \---tooltip
+|   \---visual
+|           Hero.tsx
+|           ServicoCCTV.tsx
+|           ServicoMotorDePortao.tsx
+|           ServicoTecnologiaInteligente.tsx
+|           ServicoVedacaoEletrica.tsx
+|
++---data
+|   |   accessibility.ts
+|   |   customer-projects.ts
+|   |   links.ts
+|   |   promotions.ts
+|   |   quote.ts
+|   |   search.ts
+|   |   service-products.ts
+|   |   services.ts
+|   |   user.ts
+|   |
+|   +---constants
+|   +---mock
+|   +---navigation
+|   +---seeds
+|   \---static
++---features
+|   +---accessibility
+|   |   |   README.md
+|   |   |
+|   |   +---components
+|   |   |       AccessibilityButton.tsx
+|   |   |       AccessibilityModal.tsx
+|   |   |       AccessibilityOptions.tsx
+|   |   |       AccessibilitySegment.tsx
+|   |   |
+|   |   +---data
+|   |   |       accessibility.data.ts
+|   |   |
+|   |   +---hooks
+|   |   |       use-accessibility.ts
+|   |   |
+|   |   +---store
+|   |   |       accessibility.store.ts
+|   |   |
+|   |   +---types
+|   |   |       accessibility.types.ts
+|   |   |
+|   |   \---utils
+|   |           accessibility.helpers.ts
+|   |
+|   +---auth
+|   |   |   index.ts
+|   |   |
+|   |   +---button
+|   |   |       Button.tsx
+|   |   |
+|   |   +---components
+|   |   |       AuthGuard.tsx
+|   |   |       AuthModal.tsx
+|   |   |       AuthTabs.tsx
+|   |   |       login-form.tsx
+|   |   |       register-form.tsx
+|   |   |
+|   |   +---data
+|   |   |       auth.data.ts
+|   |   |
+|   |   +---fields
+|   |   |       Password.tsx
+|   |   |       Select.tsx
+|   |   |       Text.tsx
+|   |   |
+|   |   +---forms
+|   |   |       ForgotPasswordForm.tsx
+|   |   |       Login.tsx
+|   |   |       LoginForm.tsx
+|   |   |       Register.tsx
+|   |   |       RegisterForm.tsx
+|   |   |       ResetPasswordForm.tsx
+|   |   |
+|   |   +---hooks
+|   |   |       use-auth.ts
+|   |   |       use-login.ts
+|   |   |       use-register.ts
+|   |   |
+|   |   +---services
+|   |   |       auth.service.ts
+|   |   |       token.service.ts
+|   |   |
+|   |   +---store
+|   |   |       auth.store.ts
+|   |   |
+|   |   +---types
+|   |   |       auth.types.ts
+|   |   |       session.types.ts
+|   |   |
+|   |   +---utils
+|   |   |       auth.helpers.ts
+|   |   |       auth.utils.ts
+|   |   |
+|   |   \---validators
+|   |           auth.validator.ts
+|   |
+|   +---promotions
+|   |   |   README.md
+|   |   |
+|   |   +---components
+|   |   |       PromotionCard.tsx
+|   |   |       PromotionModal.tsx
+|   |   |       PromotionsSection.tsx
+|   |   |
+|   |   +---data
+|   |   |       promotions.data.ts
+|   |   |
+|   |   +---forms
+|   |   |       PromotionForm.tsx
+|   |   |
+|   |   +---hooks
+|   |   |       use-promotions.ts
+|   |   |
+|   |   +---services
+|   |   |       promotions.service.ts
+|   |   |
+|   |   +---store
+|   |   |       promotions.store.ts
+|   |   |
+|   |   +---types
+|   |   |       promotion.types.ts
+|   |   |
+|   |   +---utils
+|   |   |       promotion.helpers.ts
+|   |   |
+|   |   \---validators
+|   |           promotion.validator.ts
+|   |
+|   +---search
+|   |   |   README.md
+|   |   |
+|   |   +---components
+|   |   |       SearchModal.tsx
+|   |   |       SearchResults.tsx
+|   |   |       SearchTable.tsx
+|   |   |
+|   |   +---data
+|   |   |       search.data.ts
+|   |   |
+|   |   +---hooks
+|   |   |       use-search.ts
+|   |   |
+|   |   +---types
+|   |   |       search.types.ts
+|   |   |
+|   |   \---utils
+|   |           search.helpers.ts
+|   |
+|   +---services
+|   |   |   index.ts
+|   |   |
+|   |   +---button
+|   |   |       Button.tsx
+|   |   |
+|   |   +---components
+|   |   |       ServiceCard.tsx
+|   |   |       ServicesSection.tsx
+|   |   |
+|   |   +---data
+|   |   |       services.data.ts
+|   |   |
+|   |   +---fields
+|   |   |       Select.tsx
+|   |   |       Text.tsx
+|   |   |
+|   |   +---forms
+|   |   |       QuoteRequest.tsx
+|   |   |       QuoteRequestForm.tsx
+|   |   |       ServiceForm.tsx
+|   |   |
+|   |   +---hooks
+|   |   |       use-services.ts
+|   |   |
+|   |   +---services
+|   |   |       api.service.ts
+|   |   |       services.service.ts
+|   |   |
+|   |   +---store
+|   |   |       services.store.ts
+|   |   |
+|   |   +---types
+|   |   |       service.types.ts
+|   |   |
+|   |   +---utils
+|   |   |       request.utils.ts
+|   |   |       service.helpers.ts
+|   |   |
+|   |   +---validators
+|   |   |       service.validator.ts
+|   |   |
+|   |   \---visual
+|   \---users
+|       |   index.ts
+|       |
+|       +---components
+|       |       user-card.tsx
+|       |       UserCard.tsx
+|       |       users-list.tsx
+|       |
+|       +---data
+|       |       users.data.ts
+|       |
+|       +---forms
+|       |       ProfileForm.tsx
+|       |
+|       +---hooks
+|       |       use-users.ts
+|       |
+|       +---services
+|       |       users.service.ts
+|       |
+|       +---store
+|       |       users.store.ts
+|       |
+|       +---types
+|       |       user.types.ts
+|       |
+|       +---utils
+|       |       user.helpers.ts
+|       |       users.utils.ts
+|       |
+|       \---validators
+|               user.validator.ts
+|
++---lib
+|   +---api
+|   |       api-client.ts
+|   |
+|   +---constants
+|   +---formatters
+|   +---generators
+|   +---helpers
+|   |       strings.helper.ts
+|   |
+|   +---hooks
+|   |       use-theme.ts
+|   |
+|   +---permissions
+|   +---storage
+|   |       local.storage.ts
+|   |
+|   +---stores
+|   +---supabase
+|   |       admin.ts
+|   |       auth.ts
+|   |       client.ts
+|   |       platform-data.ts
+|   |
+|   \---validators
++---routes
+|   |   index.tsx
+|   |   layout.tsx
+|   |
+|   +---about
+|   +---accessibility
+|   |       index.tsx
+|   |
+|   +---admin
+|   |       index.tsx
+|   |
+|   +---auth
+|   |   +---callback
+|   |   |       index.tsx
+|   |   |
+|   |   +---forgot-password
+|   |   +---login
+|   |   +---register
+|   |   \---reset-password
+|   +---contact
+|   +---dashboard
+|   |       index.tsx
+|   |
+|   +---login
+|   |       index.tsx
+|   |
+|   +---privacy
+|   +---profile
+|   |       index.tsx
+|   |
+|   +---promotions
+|   |       index.tsx
+|   |
+|   +---register
+|   |       index.tsx
+|   |
+|   +---search
+|   |       index.tsx
+|   |
+|   +---services
+|   |       index.tsx
+|   |
+|   +---settings
+|   +---terms
+|   \---users
++---styles
+|   |   main.css
+|   |
+|   +---animations
+|   +---base
+|   +---components
+|   +---globals
+|   +---themes
+|   +---utilities
+|   \---variables
++---tests
+|   +---e2e
+|   +---integration
+|   +---mocks
+|   +---setup
+|   \---unit
++---types
+|       accessibility.ts
+|       auth.ts
+|       customer-project.ts
+|       global.types.ts
+|       header.ts
+|       promotion.ts
+|       search.ts
+|       service-products.ts
+|       services.ts
+|       user.ts
+|
+\---utils
+        accessibility-storage.ts
+        search.ts

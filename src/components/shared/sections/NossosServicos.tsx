@@ -39,6 +39,7 @@ export default component$(function ServicesSection() {
               title={service.title}
               description={service.description}
               image={service.image}
+              imageUrl={service.imageUrl}
             />
           ))}
         </div>

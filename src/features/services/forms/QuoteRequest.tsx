@@ -23,6 +23,7 @@ type QuoteRequestFormProps = {
 };
 
 type QuoteArticle = ServiceProduct & {
+  clientQuantityEditable?: boolean;
   locked?: boolean;
 };
 
@@ -411,6 +412,63 @@ export default component$<QuoteRequestFormProps>(
       toastOpen.value = true;
     });
 
+    const updateArticleQuantity = $((articleId: string, quantity: number) => {
+      const safeQuantity = Math.max(1, Math.floor(quantity || 1));
+
+      const sourceArticle = articles.value.find((article) => article.id === articleId);
+      const rules = sourceArticle?.dependencyRules ?? [];
+
+      articles.value = articles.value.map((article) => {
+        if (article.id === articleId) {
+          return {
+            ...article,
+            estimatedQuantity: safeQuantity,
+            quantity: `${safeQuantity} unidade(s)`,
+          };
+        }
+
+        const rule = rules.find((item) => item.targetProductId === article.id);
+
+        if (!rule) {
+          return article;
+        }
+
+        const rawQuantity = (rule.formulaSteps ?? []).reduce(
+          (current, step) => {
+            const value = Number(step.value || 0);
+
+            if (step.operator === "add") {
+              return current + value;
+            }
+
+            if (step.operator === "subtract") {
+              return current - value;
+            }
+
+            if (step.operator === "divide") {
+              return value === 0 ? current : current / value;
+            }
+
+            return current * value;
+          },
+          safeQuantity,
+        );
+        const rounded =
+          rule.rounding === "floor"
+            ? Math.floor(rawQuantity)
+            : rule.rounding === "round"
+              ? Math.round(rawQuantity)
+              : Math.ceil(rawQuantity);
+        const nextQuantity = Math.max(rule.minQuantity, rounded);
+
+        return {
+          ...article,
+          estimatedQuantity: nextQuantity,
+          quantity: `${nextQuantity} unidade(s)`,
+        };
+      });
+    });
+
     const showToast = $((title: string, message: string) => {
       toastTitle.value = title;
       toastMessage.value = message;
@@ -463,7 +521,7 @@ export default component$<QuoteRequestFormProps>(
         return false;
       }
 
-      await supabase.from("quote_items").insert(
+      const { error: itemsError } = await supabase.from("quote_items").insert(
         articles.value.map((article) => ({
           quote_id: data.id,
           name: article.name,
@@ -473,6 +531,10 @@ export default component$<QuoteRequestFormProps>(
           locked: article.locked ?? false,
         })),
       );
+
+      if (itemsError) {
+        return false;
+      }
 
       return true;
     });
@@ -1709,7 +1771,23 @@ export default component$<QuoteRequestFormProps>(
                       {article.system ?? article.category}
                     </td>
                     <td class="py-3 pr-4 text-sm text-cyan-200">
-                      {article.quantity}
+                      {article.clientQuantityEditable ? (
+                        <input
+                          min={1}
+                          step={1}
+                          type="number"
+                          value={article.estimatedQuantity ?? 1}
+                          class="h-10 w-24 rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none"
+                          onInput$={(event) => {
+                            updateArticleQuantity(
+                              article.id,
+                              Number((event.target as HTMLInputElement).value || 1),
+                            );
+                          }}
+                        />
+                      ) : (
+                        article.quantity
+                      )}
                     </td>
                     <td class="py-3 pr-4 text-sm text-slate-300">
                       {article.unitPrice

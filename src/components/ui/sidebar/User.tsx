@@ -106,34 +106,45 @@ export default component$<UserSidebarProps>(
         { label: "Historico", value: "Disponivel apos login" },
       ];
 
-  // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(async () => {
-    user.value = getCachedAuthUser();
-    editableUser.value = user.value ? { ...user.value } : null;
-    sessionActive.value =
-      !!user.value && localStorage.getItem("bitoll-auth-state") !== "guest";
+  const syncAuthState$ = $(async (nextUser?: User | null, nextState?: boolean) => {
+    const cachedUser = nextUser ?? getCachedAuthUser();
+    const isActive =
+      nextState ?? (!!cachedUser && localStorage.getItem("bitoll-auth-state") !== "guest");
 
-    if (sessionActive.value && !localStorage.getItem("bitoll-auth-started-at")) {
+    user.value = cachedUser;
+    editableUser.value = cachedUser ? { ...cachedUser } : null;
+    sessionActive.value = isActive;
+
+    if (isActive && !localStorage.getItem("bitoll-auth-started-at")) {
       localStorage.setItem("bitoll-auth-started-at", new Date().toISOString());
     }
 
     sessionStartedAt.value =
       localStorage.getItem("bitoll-auth-started-at") ?? "";
-    adminAccess.value = await loadAdminAccess();
+    adminAccess.value = isActive ? await loadAdminAccess() : emptyAdminAccess;
+  });
+
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(async () => {
+    await syncAuthState$();
   });
 
   useOnWindow(
     "bitoll-auth-change",
-    $((event) => {
-      sessionActive.value =
-        !!(event as CustomEvent<{ isAuthenticated: boolean }>).detail
-          ?.isAuthenticated;
-      user.value =
-        (event as CustomEvent<{ user?: User | null }>).detail?.user ??
-        getCachedAuthUser();
-      editableUser.value = user.value ? { ...user.value } : null;
-      sessionStartedAt.value =
-        localStorage.getItem("bitoll-auth-started-at") ?? "";
+    $(async (event) => {
+      const detail =
+        (event as CustomEvent<{ isAuthenticated?: boolean; user?: User | null }>)
+          .detail ?? {};
+
+      await syncAuthState$(detail.user, !!detail.isAuthenticated);
+      authModal.value = false;
+    }),
+  );
+
+  useOnWindow(
+    "focus",
+    $(async () => {
+      await syncAuthState$();
     }),
   );
 
@@ -211,12 +222,12 @@ export default component$<UserSidebarProps>(
                 size="lg"
               />
 
-              <div>
+              <div class="min-w-0 flex-1">
                 <h3 class="text-xl font-bold text-white">
                   {displayUser?.name ?? "Cliente Bitoll"}
                 </h3>
 
-                <p class="mt-1 text-sm text-slate-400">
+                <p class="mt-1 max-w-full break-all text-sm leading-5 text-slate-400">
                   {displayUser?.email ?? "Entre ou crie uma conta para guardar acoes"}
                 </p>
 
@@ -228,7 +239,7 @@ export default component$<UserSidebarProps>(
                       : "border-cyan-400/20 bg-cyan-400/10 text-cyan-300",
                   ]}
                 >
-                  {displayUser?.verified
+                  {isLoggedIn
                     ? `Sessao ativa ha ${sessionDuration}`
                     : "Sem sessao iniciada"}
                 </div>
@@ -287,7 +298,7 @@ export default component$<UserSidebarProps>(
                     {item.label}
                   </p>
 
-                  <p class="mt-2 text-sm font-semibold text-slate-100">
+                  <p class="mt-2 break-words text-sm font-semibold text-slate-100">
                     {item.value}
                   </p>
                 </div>
@@ -354,7 +365,9 @@ export default component$<UserSidebarProps>(
                       window.location.href = "/admin";
                     }}
                   >
-                    Entrar como admin
+                    {adminAccess.value.role === "operador"
+                      ? "Entrar como operador"
+                      : "Entrar como admin"}
                   </Button>
                 )}
 

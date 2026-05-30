@@ -3,7 +3,7 @@ import { component$ } from "@builder.io/qwik";
 import type { Service } from "~/types/services";
 
 export default component$<Service>(
-  ({ title, description, image: Image }) => {
+  ({ title, description, image: Image, imageUrl }) => {
     return (
       <div
         class="
@@ -22,8 +22,15 @@ export default component$<Service>(
           group
         "
       >
-        {/* BACKGROUND IMAGE */}
-        <Image />
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={title}
+            class="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <Image />
+        )}
 
         {/* OVERLAY */}
         <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent"></div>

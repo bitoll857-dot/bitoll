@@ -52,7 +52,15 @@ export default component$(function ServicesSection() {
                 class="group relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 transition-all duration-500 hover:-translate-y-3 hover:border-cyan-400/30 hover:shadow-2xl hover:shadow-cyan-500/10"
               >
                 <div class="relative h-[400px] overflow-hidden">
-                  <Image />
+                  {service.imageUrl ? (
+                    <img
+                      src={service.imageUrl}
+                      alt={serviceTitle}
+                      class="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Image />
+                  )}
 
                   {/* Overlay */}
                   <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/75 to-transparent" />

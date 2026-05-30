@@ -1,14 +1,17 @@
 import { component$, type QRL } from "@builder.io/qwik";
 
-import { structureOptions } from "~/data/service-products";
-import type { StructureType } from "~/types/service-products";
+import type {
+  ServiceStructureOption,
+  StructureType,
+} from "~/types/service-products";
 
 type StructureSelectorProps = {
+  options: ServiceStructureOption[];
   value: StructureType;
   onChange$: QRL<(value: StructureType) => void>;
 };
 
-export default component$<StructureSelectorProps>(({ value, onChange$ }) => {
+export default component$<StructureSelectorProps>(({ options, value, onChange$ }) => {
   return (
     <div class="rounded-3xl border border-slate-800 bg-slate-900/50 p-4">
       <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -16,7 +19,7 @@ export default component$<StructureSelectorProps>(({ value, onChange$ }) => {
       </p>
 
       <div class="mt-4 grid gap-3 md:grid-cols-3">
-        {structureOptions.map((option) => {
+        {options.map((option) => {
           const isSelected = value === option.value;
 
           return (
@@ -31,13 +34,17 @@ export default component$<StructureSelectorProps>(({ value, onChange$ }) => {
               ]}
               onClick$={() => onChange$(option.value)}
             >
-              <img
-                src={option.imageUrl}
-                alt={option.imageAlt}
-                width={320}
-                height={160}
-                class="h-28 w-full object-cover"
-              />
+              {option.imageUrl ? (
+                <img
+                  src={option.imageUrl}
+                  alt={option.imageAlt}
+                  width={320}
+                  height={160}
+                  class="h-28 w-full object-cover"
+                />
+              ) : (
+                <span class="block h-28 w-full bg-slate-900" />
+              )}
 
               <span class="block px-4 pt-4 text-sm font-bold">
                 {option.label}

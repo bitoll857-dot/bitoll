@@ -1,17 +1,74 @@
 # Bitoll - Seguranca e Tecnologia
 
-Sistema web institucional da Bitoll para apresentar servicos de seguranca e tecnologia, permitir solicitacao de orcamento, divulgar promocoes, pesquisar conteudos e oferecer recursos de acessibilidade ao visitante.
+Sistema web da Bitoll para apresentar servicos de seguranca e tecnologia, receber solicitacoes de cotacao, divulgar promocoes e acompanhar a progressao dos trabalhos aprovados.
 
 ## Funcionalidades
 
-- Pagina inicial com Hero e formulario de solicitacao de orcamento.
-- Navbar com links ativos, pesquisa global, menu mobile, acessibilidade e painel do usuario.
-- Area opcional do cliente com modal de login, registo e informacoes do usuario.
-- Servicos com modal de produtos por nivel de estrutura: basica, media e alta.
-- Tabela de produtos com detalhes por item e solicitacao de cotacao.
-- Pagina de promocoes com desconto, periodo, tecnologias, detalhes e acao de solicitacao.
-- Modal de acessibilidade com preferencias guardadas no localStorage.
-- Dados temporarios estaticos em arquivos dentro de `src/data`.
+- Pagina publica com servicos, promocoes, pesquisa, acessibilidade e fluxo de solicitacao de cotacao.
+- Autenticacao com Supabase Auth e perfil de cliente.
+- Sidebar do usuario com dados da sessao, perfil e acesso a projetos/cotacoes.
+- Servicos com opcoes de estrutura carregadas da base de dados.
+- Modal de produtos necessarios por servico e estrutura.
+- Cotacao padrao por servico, estrutura, artigos, quantidades padrao e mao de obra.
+- Regras de calculo entre artigos quando o cliente pode editar uma quantidade.
+- Promocoes ligadas a cotacoes padrao.
+- Painel admin owner para gerir servicos, estruturas, artigos, cotacoes padrao, promocoes e solicitacoes.
+- Painel admin operador para atualizar progresso, estado, tecnico, proximo passo e previsao de conclusao.
+- Upload de imagens para o bucket `bitoll-images`, com limite de 0.3MB por imagem.
+- Toasts de feedback para operacoes administrativas.
+
+## Calculo de Cotacao
+
+A cotacao padrao define quais artigos entram numa estrutura de servico e quais quantidades o cliente pode editar.
+
+Quando um artigo editavel afeta outros artigos, o admin pode definir uma formula em etapas:
+
+- O valor base e a quantidade editada pelo cliente.
+- Cada etapa usa um operador matematico: `+`, `-`, `x` ou `/`.
+- Cada etapa recebe um valor numerico.
+- Cada regra pode ter quantidade minima e arredondamento para cima, normal ou para baixo.
+
+Exemplos:
+
+- PSU igual a quantidade de cameras: `base x 1`.
+- Balun igual a quantidade de cameras: `base x 1`.
+- DVR por canais: `base / 4`, arredondar para cima, minimo `1`.
+
+## Supabase
+
+O sistema usa Supabase para autenticacao, base de dados e storage.
+
+Tabelas principais:
+
+- `profiles`
+- `admin_users`
+- `services`
+- `service_structure_options`
+- `service_products`
+- `service_quote_templates`
+- `service_quote_template_fields`
+- `service_quote_template_items`
+- `service_quote_template_item_rules`
+- `promotions`
+- `quotes`
+- `quote_items`
+
+Bucket usado:
+
+- `bitoll-images`
+
+Depois de alteracoes de schema, execute o arquivo `supabase/schema.sql` no SQL Editor da Supabase para criar ou atualizar tabelas, colunas e politicas RLS.
+
+## Variaveis de Ambiente
+
+Crie um arquivo `.env` com as chaves publicas do Supabase:
+
+```bash
+PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
+PUBLIC_SUPABASE_ANON_KEY=SUA_CHAVE_ANON
+```
+
+Use sempre a URL base do projeto Supabase, sem `/rest/v1/`.
 
 ## Tecnologias
 
@@ -20,51 +77,27 @@ Sistema web institucional da Bitoll para apresentar servicos de seguranca e tecn
 - Vite
 - TypeScript
 - Tailwind CSS
-- Vercel Edge
+- Supabase
+- Vercel
 
 ## Estrutura Principal
 
 - `src/components`: componentes reutilizaveis da interface.
-- `src/components/sections`: secoes principais das paginas.
-- `src/components/navigation`: navbar, menu mobile, avatar e sidebar do usuario.
-- `src/components/forms`: formularios gerais, como solicitacao de orcamento.
-- `src/components/auth`: modal e formularios de login/registo.
-- `src/components/accessibility`: botao e modal de acessibilidade.
-- `src/components/services`: modal de produtos e tabela por servico.
-- `src/components/promotions`: modal de detalhes das promocoes.
-- `src/components/search`: modal e tabela de pesquisa global.
-- `src/data`: dados estaticos temporarios.
-- `src/types`: tipos TypeScript do dominio.
-- `src/utils`: funcoes auxiliares.
+- `src/features`: modulos por dominio, como admin, auth, servicos e promocoes.
+- `src/lib/supabase`: cliente Supabase e carregamento de dados da plataforma.
 - `src/routes`: paginas e rotas do Qwik City.
-
-## Dados Estaticos
-
-Por enquanto, o sistema usa dados locais em `src/data`, como:
-
-- `user.ts`
-- `services.ts`
-- `service-products.ts`
-- `promotions.ts`
-- `search.ts`
-- `accessibility.ts`
-- `links.ts`
-
-No futuro, estes dados podem ser ligados a uma API, base de dados, CMS ou outro servico de armazenamento.
+- `src/types`: tipos TypeScript do dominio.
+- `supabase/schema.sql`: schema, politicas RLS e configuracoes de storage.
 
 ## Como Rodar
 
 ```bash
 npm install
 npm start
+```
 
-funcionalidades actuais da plataforma
-cotação semi-automática
-upload de imagens
-promoções com factura, IVA e total
-acessibilidade
-sessão/logout
-dados estáticos
-estrutura de pastas
-comandos de validação
-equipa/desenvolvimento da plataforma
+## Validacao
+
+```bash
+npm run build.types
+```

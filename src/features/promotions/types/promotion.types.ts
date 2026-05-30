@@ -13,6 +13,7 @@ export interface Promotion {
   id: number;
   slug: string;
   serviceSlug: string;
+  quoteTemplateId?: string;
   title: string;
   shortDescription: string;
   description: string;

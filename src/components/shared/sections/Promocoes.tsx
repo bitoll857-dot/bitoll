@@ -6,7 +6,10 @@ import AuthModal from "../modal/Auth";
 import Button from "../button/Button";
 import ActionToast from "~/components/ui/toast";
 import { getCachedAuthUser } from "~/lib/supabase/client";
-import { loadPromotionsFromSupabase } from "~/lib/supabase/platform-data";
+import {
+  loadPromotionsFromSupabase,
+  loadQuoteTemplateProductsFromSupabase,
+} from "~/lib/supabase/platform-data";
 import type { AuthMode } from "~/types/auth";
 import type { Promotion } from "~/types/promotion";
 import type { ServiceProduct } from "~/types/service-products";
@@ -215,7 +218,7 @@ export default component$(function PromotionsSection() {
                   <Button
                     spacing="none"
                     buttonClass="rounded-2xl px-4 py-3 text-sm font-bold"
-                    onClick$={() => {
+                    onClick$={async () => {
                       if (
                         !getCachedAuthUser() ||
                         localStorage.getItem("bitoll-auth-state") === "guest"
@@ -224,12 +227,20 @@ export default component$(function PromotionsSection() {
                         return;
                       }
 
+                      const templateProducts = promotion.quoteTemplateId
+                        ? await loadQuoteTemplateProductsFromSupabase(
+                            promotion.quoteTemplateId,
+                          )
+                        : [];
+
                       initialData.value = {
                         service: promotion.serviceSlug,
                         serviceTitle: promotion.title,
                         originLabel: `promocao ${promotion.title}`,
                         source: "promotion",
-                        products: getQuoteProducts(promotion),
+                        products: templateProducts.length
+                          ? templateProducts
+                          : getQuoteProducts(promotion),
                         discountAmount: promotion.discountAmount,
                         currency: promotion.currency,
                       };

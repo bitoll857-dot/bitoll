@@ -7,6 +7,7 @@ export interface Service {
   shortDescription?: string;
   description: string;
   image: Component;
+  imageUrl?: string;
   features?: string[];
   benefits?: string[];
   experience?: string;

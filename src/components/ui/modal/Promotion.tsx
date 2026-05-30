@@ -6,7 +6,9 @@ import QuoteRequestModal from "../modal/QuoteRequest";
 import AuthModal from "../modal/Auth";
 import ActionToast from "../toast";
 import { getCachedAuthUser } from "~/lib/supabase/client";
+import { loadQuoteTemplateProductsFromSupabase } from "~/lib/supabase/platform-data";
 import type { AuthMode } from "~/types/auth";
+import type { ServiceProduct } from "~/types/service-products";
 
 type PromotionDetailsModalProps = {
   promotion: Promotion;
@@ -62,7 +64,15 @@ export default component$<PromotionDetailsModalProps>(
     const authModal = useSignal(false);
     const authMode = useSignal<AuthMode>("login");
 
-    const initialData = useSignal({
+    const initialData = useSignal<{
+      service: string;
+      serviceTitle: string;
+      originLabel: string;
+      source: string;
+      products: ServiceProduct[];
+      discountAmount: number;
+      currency: string;
+    }>({
       service: "",
       serviceTitle: "",
       originLabel: "",
@@ -285,7 +295,7 @@ export default component$<PromotionDetailsModalProps>(
             <Button
               spacing="none"
               buttonClass="rounded-2xl px-5 py-3 text-sm font-bold"
-              onClick$={() => {
+              onClick$={async () => {
                 if (
                   !getCachedAuthUser() ||
                   localStorage.getItem("bitoll-auth-state") === "guest"
@@ -294,12 +304,20 @@ export default component$<PromotionDetailsModalProps>(
                   return;
                 }
 
+                const templateProducts = promotion.quoteTemplateId
+                  ? await loadQuoteTemplateProductsFromSupabase(
+                      promotion.quoteTemplateId,
+                    )
+                  : [];
+
                 initialData.value = {
                   service: promotion.serviceSlug,
                   serviceTitle: promotion.title,
                   originLabel: `promocao ${promotion.title}`,
                   source: "promotion",
-                  products: getQuoteProducts(promotion),
+                  products: templateProducts.length
+                    ? templateProducts
+                    : getQuoteProducts(promotion),
                   discountAmount: promotion.discountAmount,
                   currency: promotion.currency,
                 };
