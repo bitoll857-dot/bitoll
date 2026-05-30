@@ -417,8 +417,11 @@ export default component$<QuoteRequestFormProps>(
 
       const sourceArticle = articles.value.find((article) => article.id === articleId);
       const rules = sourceArticle?.dependencyRules ?? [];
+      const changedQuantities = new Map<string, number>([
+        [articleId, safeQuantity],
+      ]);
 
-      articles.value = articles.value.map((article) => {
+      const nextArticles = articles.value.map((article) => {
         if (article.id === articleId) {
           return {
             ...article,
@@ -460,11 +463,30 @@ export default component$<QuoteRequestFormProps>(
               ? Math.round(rawQuantity)
               : Math.ceil(rawQuantity);
         const nextQuantity = Math.max(rule.minQuantity, rounded);
+        changedQuantities.set(article.id, nextQuantity);
 
         return {
           ...article,
           estimatedQuantity: nextQuantity,
           quantity: `${nextQuantity} unidade(s)`,
+        };
+      });
+
+      articles.value = nextArticles.map((article) => {
+        if (!article.laborSourceProductId) {
+          return article;
+        }
+
+        const laborQuantity = changedQuantities.get(article.laborSourceProductId);
+
+        if (!laborQuantity) {
+          return article;
+        }
+
+        return {
+          ...article,
+          estimatedQuantity: laborQuantity,
+          quantity: `${laborQuantity} servico(s)`,
         };
       });
     });
@@ -722,45 +744,15 @@ export default component$<QuoteRequestFormProps>(
           Math.max(0, houseWallDistanceMeters.value) * Math.max(1, wallCameras) +
           cameraCount * 8,
       );
-      const recorderChannels = cameraCount <= 4 ? 4 : cameraCount <= 8 ? 8 : 16;
-      const storageTb = cameraCount <= 4 ? 1 : cameraCount <= 8 ? 2 : 4;
-
       articles.value = articles.value.map((article) => {
         const text = `${article.name} ${article.category} ${article.model ?? ""}`.toLowerCase();
 
-        if (text.includes("camera") || text.includes("cameras")) {
-          return {
-            ...article,
-            quantity: `${cameraCount} unidades`,
-            estimatedQuantity: cameraCount,
-          };
-        }
-
-        if (text.includes("dvr") || text.includes("nvr")) {
-          return {
-            ...article,
-            quantity: `1 unidade ${recorderChannels} canais`,
-            estimatedQuantity: 1,
-          };
-        }
-
-        if (text.includes("disco") || text.includes("storage")) {
-          return {
-            ...article,
-            quantity: `${storageTb}TB recomendados`,
-            estimatedQuantity: Math.max(1, Math.ceil(storageTb / 2)),
-          };
-        }
-
-        if (text.includes("switch")) {
-          return {
-            ...article,
-            quantity: cameraCount > 4 ? "1 unidade PoE" : "Opcional",
-            estimatedQuantity: cameraCount > 4 ? 1 : 0,
-          };
-        }
-
-        if (text.includes("cabo")) {
+        if (
+          text.includes("cabo") ||
+          text.includes("calha") ||
+          text.includes("conduite") ||
+          text.includes("tubo")
+        ) {
           return {
             ...article,
             quantity: `${cableMeters} metros`,
@@ -768,21 +760,12 @@ export default component$<QuoteRequestFormProps>(
           };
         }
 
-        if (text.includes("mao de obra") || text.includes("instalacao")) {
-          return {
-            ...article,
-            quantity: `${cameraCount} ponto(s)`,
-            estimatedQuantity: cameraCount,
-            unitPrice: 1000,
-          };
-        }
-
         return article;
       });
 
       showToast(
-        "Estimativa CCTV actualizada",
-        `Foram sugeridas ${cameraCount} cameras, gravador de ${recorderChannels} canais, ${storageTb}TB de armazenamento e cerca de ${cableMeters}m de cabo.`,
+        "Auxiliares CCTV actualizados",
+        `A cotacao padrao foi mantida. Foram ajustados apenas cabos, calhas ou tubos para cerca de ${cableMeters}m.`,
       );
     });
 

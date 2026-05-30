@@ -388,6 +388,7 @@ export const loadServiceProductsFromSupabase = async (
 
         products.push({
           id: `labor-${template.id}`,
+          laborSourceProductId: template.labor_product_id,
           name: "Mao de obra",
           quantity: `${laborQuantity} servico(s)`,
           estimatedQuantity: laborQuantity,
@@ -470,6 +471,7 @@ export const loadQuoteTemplateProductsFromSupabase = async (
 
     products.push({
       id: `labor-${template.id}`,
+      laborSourceProductId: template.labor_product_id,
       name: "Mao de obra",
       quantity: `${laborQuantity} servico(s)`,
       estimatedQuantity: laborQuantity,

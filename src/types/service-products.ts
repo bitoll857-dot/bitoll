@@ -27,6 +27,7 @@ export interface ServiceProduct {
     targetProductId: string;
   }[];
   id: string;
+  laborSourceProductId?: string;
   name: string;
   quantity: string;
   estimatedQuantity?: number;
