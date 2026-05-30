@@ -56,6 +56,8 @@ export default component$(function ServicesSection() {
                     <img
                       src={service.imageUrl}
                       alt={serviceTitle}
+                      width={640}
+                      height={400}
                       class="absolute inset-0 h-full w-full object-cover"
                     />
                   ) : (

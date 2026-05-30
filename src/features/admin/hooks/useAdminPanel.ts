@@ -804,10 +804,6 @@ export const useAdminPanel = () => {
   });
 
   const editTemplate$ = $((template: AdminQuoteTemplate) => {
-    const fields = ownerTemplateFields.value.filter(
-      (field) => field.template_id === template.id,
-    );
-
     const items = ownerTemplateItems.value.filter(
       (item) => item.template_id === template.id,
     );

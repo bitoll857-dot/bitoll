@@ -131,6 +131,8 @@ export const ServiceForm = component$<Props>(({ admin }) => {
               admin.serviceDraft.imageUrl
             }
             alt="Pre-visualizacao do servico"
+            width={320}
+            height={112}
             class="h-28 w-full rounded-lg object-cover"
           />
 
@@ -295,6 +297,8 @@ export const StructureOptionForm = component$<Props>(({ admin }) => {
               admin.structureOptionDraft.imageUrl
             }
             alt="Pre-visualizacao da estrutura"
+            width={320}
+            height={112}
             class="h-28 w-full rounded-lg object-cover"
           />
         </div>
@@ -495,6 +499,8 @@ export const ProductForm = component$<Props>(({ admin }) => {
               admin.productDraft.imageUrl
             }
             alt="Pre-visualizacao do artigo"
+            width={320}
+            height={112}
             class="h-28 w-full rounded-lg object-cover"
           />
 
@@ -1167,6 +1173,8 @@ export const PromotionForm = component$<Props>(({ admin }) => {
               admin.promotionDraft.imageUrl
             }
             alt="Pre-visualizacao da promocao"
+            width={320}
+            height={112}
             class="h-28 w-full rounded-lg object-cover"
           />
 

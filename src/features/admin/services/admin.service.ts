@@ -12,6 +12,11 @@ import type {
   OperatorQuoteResponse,
 } from "../types/admin.types";
 
+const asStringArray = (value: unknown) =>
+  Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+
 export const uploadAdminImage = async (file: File, folder: string) => {
   const supabase = getSupabaseBrowserClient();
 
@@ -92,6 +97,7 @@ export const loadOperatorQuotes = async () => {
     profiles: Array.isArray(quote.profiles)
       ? quote.profiles[0] ?? null
       : quote.profiles,
+    updates: asStringArray(quote.updates),
   }));
 };
 

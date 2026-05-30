@@ -17,7 +17,7 @@ export type OperatorQuote = {
   next_step: string;
   technician: string;
   estimated_completion: string | null;
-  updates: unknown;
+  updates: string[];
   profiles: {
     city: string | null;
     email: string | null;
@@ -31,6 +31,7 @@ export type OperatorQuoteResponse = Omit<OperatorQuote, "profiles"> & {
     | OperatorQuote["profiles"]
     | NonNullable<OperatorQuote["profiles"]>[]
     | null;
+  updates: unknown;
 };
 
 export type OperatorDraft = {

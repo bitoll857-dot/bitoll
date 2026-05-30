@@ -194,6 +194,8 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                             <img
                               src={service.image_url}
                               alt={service.title}
+                              width={56}
+                              height={40}
                               class="h-10 w-14 rounded-lg object-cover"
                             />
                           ) : (
@@ -338,6 +340,8 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                           <img
                             src={option.image_url}
                             alt={option.title}
+                            width={56}
+                            height={40}
                             class="h-10 w-14 rounded-lg object-cover"
                           />
                         ) : (
@@ -490,6 +494,8 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                           <img
                             src={product.image_url}
                             alt={product.name}
+                            width={56}
+                            height={40}
                             class="h-10 w-14 rounded-lg object-cover"
                           />
                         ) : (
@@ -822,6 +828,8 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                           <img
                             src={promotion.image}
                             alt={promotion.title}
+                            width={56}
+                            height={40}
                             class="h-10 w-14 rounded-lg object-cover"
                           />
                         ) : (

@@ -26,6 +26,8 @@ export default component$<Service>(
           <img
             src={imageUrl}
             alt={title}
+            width={480}
+            height={400}
             class="absolute inset-0 h-full w-full object-cover"
           />
         ) : (

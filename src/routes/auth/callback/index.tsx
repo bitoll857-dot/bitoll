@@ -12,6 +12,7 @@ export default component$(() => {
   const hasError = useSignal(false);
   const nav = useNavigate();
 
+  // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(async () => {
     const hasHashSession = window.location.hash.includes("access_token=");
     const code = new URLSearchParams(window.location.search).get("code");
