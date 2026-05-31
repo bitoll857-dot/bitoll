@@ -67,9 +67,9 @@ export default component$<AboutBitollModalProps>(({ onClose$ }) => {
               que esta a contratar e consegue acompanhar melhor cada etapa.
             </p>
             <p>
-              A conta do cliente sera opcional, mas ajuda a guardar historico,
-              acompanhar pedidos, consultar andamento dos servicos e receber
-              atualizacoes importantes da plataforma.
+              A conta do cliente usa o telefone como identificador principal.
+              O email fica apenas como contacto opcional, pode ser atualizado
+              no perfil e nao bloqueia a criacao da conta no primeiro acesso.
             </p>
           </div>
 
@@ -114,4 +114,3 @@ export default component$<AboutBitollModalProps>(({ onClose$ }) => {
     </div>
   );
 });
-

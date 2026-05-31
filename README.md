@@ -5,7 +5,7 @@ Sistema web da Bitoll para apresentar servicos de seguranca e tecnologia, recebe
 ## Funcionalidades
 
 - Pagina publica com servicos, promocoes, pesquisa, acessibilidade e fluxo de solicitacao de cotacao.
-- Autenticacao com Supabase Auth e perfil de cliente.
+- Autenticacao com a base de dados da Bitoll e perfil de cliente.
 - Sidebar do usuario com dados da sessao, perfil e acesso a projetos/cotacoes.
 - Servicos com opcoes de estrutura carregadas da base de dados.
 - Modal de produtos necessarios por servico e estrutura.
@@ -34,9 +34,9 @@ Exemplos:
 - Balun igual a quantidade de cameras: `base x 1`.
 - DVR por canais: `base / 4`, arredondar para cima, minimo `1`.
 
-## Supabase
+## Base de dados da Bitoll
 
-O sistema usa Supabase para autenticacao, base de dados e storage.
+O sistema usa a base de dados da Bitoll para autenticacao, dados e storage.
 
 Tabelas principais:
 
@@ -57,18 +57,20 @@ Bucket usado:
 
 - `bitoll-images`
 
-Depois de alteracoes de schema, execute o arquivo `supabase/schema.sql` no SQL Editor da Supabase para criar ou atualizar tabelas, colunas e politicas RLS.
+Depois de alteracoes de schema, execute o arquivo `supabase/schema.sql` no SQL Editor da base de dados da Bitoll para criar ou atualizar tabelas, colunas e politicas RLS.
 
 ## Variaveis de Ambiente
 
-Crie um arquivo `.env` com as chaves publicas do Supabase:
+Crie um arquivo `.env` com as chaves publicas da base de dados da Bitoll:
 
 ```bash
 PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
 PUBLIC_SUPABASE_ANON_KEY=SUA_CHAVE_ANON
+SUPABASE_SERVICE_ROLE_KEY=SUA_CHAVE_SERVICE_ROLE
 ```
 
-Use sempre a URL base do projeto Supabase, sem `/rest/v1/`.
+Use sempre a URL base do projeto da base de dados da Bitoll, sem `/rest/v1/`.
+A chave `SUPABASE_SERVICE_ROLE_KEY` fica apenas no servidor e permite criar contas por telefone sem enviar email de confirmacao.
 
 ## Tecnologias
 
@@ -77,14 +79,14 @@ Use sempre a URL base do projeto Supabase, sem `/rest/v1/`.
 - Vite
 - TypeScript
 - Tailwind CSS
-- Supabase
+- Base de dados da Bitoll
 - Vercel
 
 ## Estrutura Principal
 
 - `src/components`: componentes reutilizaveis da interface.
 - `src/features`: modulos por dominio, como admin, auth, servicos e promocoes.
-- `src/lib/supabase`: cliente Supabase e carregamento de dados da plataforma.
+- `src/lib/supabase`: cliente da base de dados da Bitoll e carregamento de dados da plataforma.
 - `src/routes`: paginas e rotas do Qwik City.
 - `src/types`: tipos TypeScript do dominio.
 - `supabase/schema.sql`: schema, politicas RLS e configuracoes de storage.

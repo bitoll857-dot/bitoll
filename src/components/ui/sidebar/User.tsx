@@ -10,6 +10,7 @@ import {
 import UserAvatar from "../avatar/User";
 import AuthModal from "../modal/Auth";
 import Button from "../button/Button";
+import { showBitollToast } from "../toast";
 import {
   loadAdminAccess,
   type AdminAccess,
@@ -85,18 +86,21 @@ export default component$<UserSidebarProps>(
   const displayUser = isLoggedIn ? editableUser.value : null;
   const sessionDuration = formatSessionDuration(sessionStartedAt.value);
   const sessionStartLabel = formatSessionStart(sessionStartedAt.value);
+  const displayContact = displayUser?.email || displayUser?.phone || "";
   const userDetails = displayUser
     ? [
         { label: "Nome", value: displayUser.name },
-        { label: "Email Google", value: displayUser.email },
-        { label: "Telefone", value: displayUser.phone },
+        { label: "Telefone identificador", value: displayUser.phone },
+        {
+          label: "Email de contacto",
+          value: displayUser.email || "Nao informado",
+        },
         { label: "Perfil", value: displayUser.customerType },
-        { label: "Cidade", value: displayUser.city },
         { label: "Contacto", value: displayUser.preferredContactMethod },
         { label: "Estado", value: displayUser.status },
         {
           label: "Sessao",
-          value: `Google / Supabase - ${sessionDuration}`,
+          value: `Base de dados da Bitoll - ${sessionDuration}`,
         },
         { label: "Inicio da sessao", value: sessionStartLabel },
       ]
@@ -162,9 +166,9 @@ export default component$<UserSidebarProps>(
         .from("profiles")
         .update({
           full_name: nextUser.name,
+          email: nextUser.email,
           phone: nextUser.phone,
           customer_type: nextUser.customerType,
-          city: nextUser.city,
           preferred_contact_method: nextUser.preferredContactMethod,
           updated_at: new Date().toISOString(),
         })
@@ -178,6 +182,7 @@ export default component$<UserSidebarProps>(
         detail: { isAuthenticated: true, user: nextUser },
       }),
     );
+    showBitollToast("Perfil atualizado", "Os dados da conta foram guardados.");
     profileModal.value = false;
   });
 
@@ -228,7 +233,7 @@ export default component$<UserSidebarProps>(
                 </h3>
 
                 <p class="mt-1 max-w-full break-all text-sm leading-5 text-slate-400">
-                  {displayUser?.email ?? "Entre ou crie uma conta para guardar acoes"}
+                  {displayContact || "Entre ou crie uma conta para guardar acoes"}
                 </p>
 
                 <div
@@ -325,8 +330,8 @@ export default component$<UserSidebarProps>(
 
             <p class="mt-4 text-sm leading-7 text-slate-300">
               {isLoggedIn
-                ? "Aqui podes acompanhar dados da conta, servicos contratados, notificacoes e futuras funcionalidades da plataforma."
-                : "A conta e opcional. Quando o cliente entrar, o sistema podera guardar pedidos, servicos de interesse e historico para acompanhamento posterior."}
+                ? "A conta usa o telefone como identificador. O email de contacto e a morada podem ser adicionados mais tarde."
+                : "Crie uma conta com telefone e palavra-passe para guardar pedidos, acompanhar servicos e receber notificacoes da Bitoll."}
             </p>
           </div>
         </div>
@@ -349,7 +354,7 @@ export default component$<UserSidebarProps>(
                 profileModal.value = true;
               }}
             >
-              {isLoggedIn ? "Editar dados" : "Criar conta opcional"}
+              {isLoggedIn ? "Editar dados" : "Criar conta"}
             </Button>
 
             {isLoggedIn && (
@@ -422,8 +427,8 @@ export default component$<UserSidebarProps>(
                   Editar dados
                 </h2>
                 <p class="mt-2 max-w-[520px] text-sm leading-6 text-slate-400">
-                  O email vem da conta Google ativa no navegador e nao pode ser
-                  alterado aqui.
+                  O telefone identifica a conta. O email fica como contacto e
+                  pode ser adicionado ou alterado aqui.
                 </p>
               </div>
 
@@ -460,12 +465,19 @@ export default component$<UserSidebarProps>(
 
                 <label class="block">
                   <span class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    Email Google
+                    Email de contacto
                   </span>
                   <input
                     value={displayUser.email}
-                    disabled
-                    class="mt-2 h-12 w-full cursor-not-allowed rounded-2xl border border-slate-800 bg-slate-900/40 px-4 text-sm text-slate-500 outline-none"
+                    type="email"
+                    class="mt-2 h-12 w-full rounded-2xl border border-slate-800 bg-slate-900/70 px-4 text-sm text-white outline-none transition duration-300 focus:border-cyan-400/50 focus:bg-slate-900"
+                    onInput$={(event) => {
+                      const target = event.target as HTMLInputElement;
+                      editableUser.value = {
+                        ...displayUser,
+                        email: target.value,
+                      };
+                    }}
                   />
                 </label>
               </div>
@@ -477,36 +489,14 @@ export default component$<UserSidebarProps>(
                   </span>
                   <input
                     value={displayUser.phone}
-                    class="mt-2 h-12 w-full rounded-2xl border border-slate-800 bg-slate-900/70 px-4 text-sm text-white outline-none transition duration-300 focus:border-cyan-400/50 focus:bg-slate-900"
-                    onInput$={(event) => {
-                      const target = event.target as HTMLInputElement;
-                      editableUser.value = {
-                        ...displayUser,
-                        phone: target.value,
-                      };
-                    }}
+                    disabled
+                    class="mt-2 h-12 w-full cursor-not-allowed rounded-2xl border border-slate-800 bg-slate-900/40 px-4 text-sm text-slate-500 outline-none"
                   />
-                </label>
-
-                <label class="block">
-                  <span class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    Cidade
+                  <span class="mt-2 block text-xs leading-5 text-slate-500">
+                    Para alterar o telefone identificador, contacte a Bitoll.
                   </span>
-                  <input
-                    value={displayUser.city}
-                    class="mt-2 h-12 w-full rounded-2xl border border-slate-800 bg-slate-900/70 px-4 text-sm text-white outline-none transition duration-300 focus:border-cyan-400/50 focus:bg-slate-900"
-                    onInput$={(event) => {
-                      const target = event.target as HTMLInputElement;
-                      editableUser.value = {
-                        ...displayUser,
-                        city: target.value,
-                      };
-                    }}
-                  />
                 </label>
-              </div>
 
-              <div class="grid gap-5 sm:grid-cols-2">
                 <label class="block">
                   <span class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                     Perfil

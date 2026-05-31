@@ -1,8 +1,9 @@
-import { component$, type QRL, useSignal } from "@builder.io/qwik";
+import { $, component$, type QRL, useSignal } from "@builder.io/qwik";
 
 import PasswordField from "../fields/Password";
 import TextField from "../fields/Text";
 import Button from "../button/Button";
+import { showBitollToast } from "~/components/ui/toast";
 import { signInWithGoogle, signInWithPassword } from "~/lib/supabase/auth";
 
 type LoginFormProps = {
@@ -10,9 +11,11 @@ type LoginFormProps = {
 };
 
 export default component$<LoginFormProps>(({ onAuthenticated$ }) => {
-  const errorMessage = useSignal("");
-  const successMessage = useSignal("");
   const isSubmitting = useSignal(false);
+
+  const showToast$ = $((title: string, message: string) => {
+    showBitollToast(title, message);
+  });
 
   return (
     <form
@@ -21,23 +24,21 @@ export default component$<LoginFormProps>(({ onAuthenticated$ }) => {
       onSubmit$={async (event) => {
         const form = event.target as HTMLFormElement;
         const formData = new FormData(form);
-        const identifier = String(formData.get("identifier") ?? "").trim();
+        const phone = String(formData.get("phone") ?? "").trim();
         const password = String(formData.get("password") ?? "");
 
-        errorMessage.value = "";
-        successMessage.value = "";
         isSubmitting.value = true;
 
-        const result = await signInWithPassword(identifier, password);
+        const result = await signInWithPassword(phone, password);
 
         isSubmitting.value = false;
 
         if (!result.ok) {
-          errorMessage.value = result.message;
+          await showToast$("Entrada nao concluida", result.message);
           return;
         }
 
-        successMessage.value = result.message;
+        await showToast$("Sessao iniciada", result.message);
         await onAuthenticated$?.();
       }}
     >
@@ -48,8 +49,6 @@ export default component$<LoginFormProps>(({ onAuthenticated$ }) => {
         spacing="none"
         buttonClass="flex h-12 items-center justify-center rounded-2xl text-sm font-bold"
         onClick$={async () => {
-          errorMessage.value = "";
-          successMessage.value = "";
           isSubmitting.value = true;
 
           const result = await signInWithGoogle();
@@ -57,11 +56,11 @@ export default component$<LoginFormProps>(({ onAuthenticated$ }) => {
           isSubmitting.value = false;
 
           if (!result.ok) {
-            errorMessage.value = result.message;
+            await showToast$("Entrada Google", result.message);
             return;
           }
 
-          successMessage.value = result.message;
+          await showToast$("Entrada Google", result.message);
         }}
       >
         Entrar com Google
@@ -77,10 +76,11 @@ export default component$<LoginFormProps>(({ onAuthenticated$ }) => {
 
       <TextField
         id="login-identifier"
-        label="Email"
-        name="identifier"
-        placeholder="email@exemplo.com"
-        autoComplete="username"
+        label="Telefone"
+        name="phone"
+        type="tel"
+        placeholder="+258..."
+        autoComplete="tel"
         required
       />
 
@@ -120,18 +120,6 @@ export default component$<LoginFormProps>(({ onAuthenticated$ }) => {
         {isSubmitting.value ? "A entrar..." : "Entrar"}
       </Button>
 
-      {(errorMessage.value || successMessage.value) && (
-        <p
-          class={[
-            "rounded-2xl border px-4 py-3 text-sm leading-6",
-            errorMessage.value
-              ? "border-red-400/30 bg-red-400/10 text-red-200"
-              : "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
-          ]}
-        >
-          {errorMessage.value || successMessage.value}
-        </p>
-      )}
     </form>
   );
 });

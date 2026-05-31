@@ -994,8 +994,8 @@ export default component$<QuoteRequestFormProps>(
           showToast(
             saved ? "Pedido enviado" : "Proforma preparada",
             saved
-              ? "A cotacao foi guardada no Supabase e ficou ligada a sua conta."
-              : "A factura pro-forma foi gerada localmente. Nao foi possivel guardar no Supabase agora.",
+              ? "A cotacao foi guardada na base de dados da Bitoll e ficou ligada a sua conta."
+              : "A factura pro-forma foi gerada localmente. Nao foi possivel guardar na base de dados da Bitoll agora.",
           );
         }}
       >
@@ -1043,7 +1043,7 @@ export default component$<QuoteRequestFormProps>(
         <div class="grid gap-5 sm:grid-cols-2">
           <label for="quote-email" class="block">
             <span class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-              Email Google
+              Email de contacto
             </span>
             <input
               id="quote-email"

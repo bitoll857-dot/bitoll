@@ -456,8 +456,8 @@ export default component$(() => {
 
   return (
     <>
-      <div class="fixed inset-x-3 bottom-4 z-[250] flex justify-center md:inset-x-auto md:right-5 md:bottom-5 md:block">
-        <div class="grid w-full max-w-[420px] grid-cols-3 gap-2 rounded-2xl border border-slate-800 bg-slate-950/90 p-2 shadow-[0_18px_70px_rgba(2,6,23,0.45)] backdrop-blur-xl md:w-[176px] md:max-w-none md:grid-cols-1">
+      <div class="fixed inset-x-0 top-20 z-[45] border-b border-slate-800 bg-slate-950/95 px-3 py-2 backdrop-blur-xl md:inset-x-auto md:bottom-auto md:left-5 md:top-1/2 md:-translate-y-1/2 md:border-b-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-0">
+        <div class="mx-auto grid w-full max-w-[460px] grid-cols-3 gap-2 md:mx-0 md:w-[74px] md:max-w-none md:grid-cols-1 md:gap-3 md:rounded-[28px] md:border md:border-slate-800 md:bg-slate-950/88 md:p-3 md:shadow-[0_22px_80px_rgba(2,6,23,0.40)] md:backdrop-blur-xl">
           {[
             {
               mode: "completed" as const,
@@ -488,7 +488,7 @@ export default component$(() => {
               title={action.label}
               data-guide={action.mode === "active" ? "projects" : undefined}
               class={[
-                "flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-[11px] font-bold leading-tight transition duration-300 hover:-translate-y-0.5 md:justify-start md:gap-2 md:px-3 md:text-sm",
+                "flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-[11px] font-bold leading-tight transition duration-300 hover:-translate-y-0.5 md:h-14 md:w-14 md:rounded-2xl md:px-0 md:[&>span]:sr-only",
                 action.tone,
               ]}
               onClick$={() => {
@@ -658,7 +658,7 @@ export default component$(() => {
 
                 {visibleProjects.length === 0 && (
                   <div class="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 text-sm text-slate-300">
-                    Ainda nao existem pedidos desta categoria no Supabase.
+                    Ainda nao existem pedidos desta categoria na base de dados da Bitoll.
                   </div>
                 )}
               </div>

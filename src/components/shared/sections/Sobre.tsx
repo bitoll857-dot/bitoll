@@ -29,8 +29,9 @@ export default component$(() => {
             </p>
 
             <p class="leading-relaxed text-slate-400">
-              Nosso objetivo e entregar seguranca, inovacao e confiabilidade
-              para empresas e residencias.
+              A conta do cliente e criada por telefone e palavra-passe. Email,
+              morada e outros dados podem ser adicionados depois, sem obrigar
+              confirmacao por email no primeiro momento.
             </p>
 
             <Button
@@ -74,4 +75,3 @@ export default component$(() => {
     </section>
   );
 });
-

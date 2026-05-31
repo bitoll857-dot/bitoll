@@ -21,7 +21,7 @@ type AuthActionResult = {
 const missingConfigResult: AuthActionResult = {
   ok: false,
   message:
-    "Supabase ainda nao esta configurado. Preencha PUBLIC_SUPABASE_URL e PUBLIC_SUPABASE_ANON_KEY.",
+    "A base de dados da Bitoll ainda nao esta configurada. Preencha PUBLIC_SUPABASE_URL e PUBLIC_SUPABASE_ANON_KEY.",
 };
 
 const getErrorMessage = (message?: string) =>
@@ -107,7 +107,7 @@ export const signInWithGoogle = async (): Promise<AuthActionResult> => {
 };
 
 export const signInWithPassword = async (
-  email: string,
+  phone: string,
   password: string,
 ): Promise<AuthActionResult> => {
   const supabase = getSupabaseBrowserClient();
@@ -116,8 +116,20 @@ export const signInWithPassword = async (
     return missingConfigResult;
   }
 
+  const { data: profile, error: profileError } = await supabase.rpc(
+    "get_login_email_by_phone",
+    { phone_identifier: phone },
+  );
+
+  if (profileError || !profile) {
+    return {
+      ok: false,
+      message: "Nao encontramos uma conta com esse telefone.",
+    };
+  }
+
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: String(profile),
     password,
   });
 
@@ -125,13 +137,11 @@ export const signInWithPassword = async (
     return { ok: false, message: getErrorMessage(error.message) };
   }
 
-  return completeAuth(data.session, "Sessao iniciada com Supabase.");
+  return completeAuth(data.session, "Sessao iniciada na base de dados da Bitoll.");
 };
 
 export const signUpWithPassword = async (input: {
-  city: string;
-  customerType: string;
-  email: string;
+  email?: string;
   name: string;
   password: string;
   phone: string;
@@ -142,31 +152,51 @@ export const signUpWithPassword = async (input: {
     return missingConfigResult;
   }
 
-  const { data, error } = await supabase.auth.signUp({
-    email: input.email,
-    password: input.password,
-    options: {
-      data: {
-        city: input.city,
-        customer_type: input.customerType,
-        full_name: input.name,
-        phone: input.phone,
-        preferred_contact_method: "WhatsApp",
-      },
-      emailRedirectTo: getAuthRedirectUrl(),
-    },
-  });
+  const { data: existingLoginEmail, error: phoneLookupError } =
+    await supabase.rpc("get_login_email_by_phone", {
+      phone_identifier: input.phone,
+    });
 
-  if (error) {
-    return { ok: false, message: getErrorMessage(error.message) };
+  if (!phoneLookupError && existingLoginEmail) {
+    return {
+      ok: false,
+      message: "Este telefone ja esta ligado a uma conta. Entre com telefone e palavra-passe.",
+    };
   }
 
-  return completeAuth(
-    data.session,
-    data.session
-      ? "Conta criada e sessao iniciada."
-      : "Conta criada. Confirme o email para iniciar sessao.",
-  );
+  const response = await fetch("/api/auth/register", {
+    body: JSON.stringify(input),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  const result = (await response.json().catch(() => null)) as {
+    message?: string;
+    ok?: boolean;
+  } | null;
+
+  if (!response.ok || !result?.ok) {
+    return {
+      ok: false,
+      message: result?.message ?? "Nao foi possivel criar a conta agora.",
+    };
+  }
+
+  const loginResult = await signInWithPassword(input.phone, input.password);
+
+  if (!loginResult.ok) {
+    return {
+      ok: true,
+      message: "Conta criada. Ja pode entrar com telefone e palavra-passe.",
+    };
+  }
+
+  return {
+    ...loginResult,
+    message: "Conta criada e sessao iniciada.",
+  };
 };
 
 export const exchangeSupabaseAuthCode = async (
@@ -197,7 +227,7 @@ export const exchangeSupabaseAuthCode = async (
 
   clearAuthIntent();
 
-  return completeAuth(data.session, "Sessao confirmada com Supabase.");
+  return completeAuth(data.session, "Sessao confirmada na base de dados da Bitoll.");
 };
 
 export const syncSupabaseAuthSession = async (): Promise<AuthActionResult> => {

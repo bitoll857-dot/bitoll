@@ -180,7 +180,7 @@ export default component$<ServiceProductsModalProps>(
 
             {!productsLoading.value && products.value.length === 0 && (
               <div class="mt-6 rounded-3xl border border-slate-800 bg-slate-900/60 p-6 text-sm text-slate-300">
-                Ainda nao existem produtos desta estrutura no Supabase.
+                Ainda nao existem produtos desta estrutura na base de dados da Bitoll.
               </div>
             )}
           </div>

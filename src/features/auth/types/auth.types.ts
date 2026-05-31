@@ -1,9 +1,7 @@
-import type { CustomerType } from "~/features/users/types/user.types";
-
 export type AuthMode = "login" | "register";
 
 export interface LoginFormData {
-  identifier: string;
+  phone: string;
   password: string;
   remember: boolean;
 }
@@ -11,10 +9,8 @@ export interface LoginFormData {
 export interface RegisterFormData {
   name: string;
   phone: string;
-  email: string;
+  email?: string;
   password: string;
   confirmPassword: string;
-  customerType: CustomerType;
-  city: string;
   acceptTerms: boolean;
 }

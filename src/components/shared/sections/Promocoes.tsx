@@ -268,7 +268,7 @@ export default component$(function PromotionsSection() {
 
         {!isLoading.value && promotions.value.length === 0 && (
           <div class="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 text-sm text-slate-300">
-            Ainda nao existem promocoes ativas no Supabase.
+            Ainda nao existem promocoes ativas na base de dados da Bitoll.
           </div>
         )}
       </div>

@@ -1,5 +1,5 @@
 -- Bitoll Platform - starter content
--- Run after schema.sql. The app reads these rows from Supabase.
+-- Run after schema.sql. The app reads these rows from the base de dados da Bitoll.
 
 insert into public.services (
   slug,

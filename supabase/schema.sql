@@ -1,5 +1,5 @@
--- Bitoll Platform - Supabase starter schema
--- Run this file in the Supabase SQL editor after creating the project.
+-- Bitoll Platform - base de dados da Bitoll starter schema
+-- Run this file in the base de dados da Bitoll SQL editor after creating the project.
 
 create extension if not exists "pgcrypto";
 
@@ -8,7 +8,7 @@ begin
   create extension if not exists "vector" with schema extensions;
 exception
   when undefined_file or insufficient_privilege then
-    raise notice 'pgvector is not available in this Supabase project; embeddings will be skipped.';
+    raise notice 'pgvector is not available in this base de dados da Bitoll project; embeddings will be skipped.';
 end;
 $$;
 
@@ -26,6 +26,12 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create unique index if not exists profiles_phone_unique
+on public.profiles (phone)
+where phone <> '';
+
+drop index if exists public.profiles_email_unique;
 
 create table if not exists public.accounts (
   id uuid primary key default gen_random_uuid(),
@@ -470,6 +476,22 @@ create policy "Profiles can be created by their owner"
 on public.profiles for insert
 with check (auth.uid() = id);
 
+create or replace function public.get_login_email_by_phone(phone_identifier text)
+returns text
+language sql
+security definer
+set search_path = public
+as $$
+  select auth_users.email
+  from public.profiles
+  join auth.users as auth_users on auth_users.id = profiles.id
+  where regexp_replace(profiles.phone, '\s+', '', 'g') =
+    regexp_replace(coalesce(phone_identifier, ''), '\s+', '', 'g')
+  limit 1;
+$$;
+
+grant execute on function public.get_login_email_by_phone(text) to anon, authenticated;
+
 drop policy if exists "Accounts are visible to members" on public.accounts;
 create policy "Accounts are visible to members"
 on public.accounts for select
@@ -899,7 +921,15 @@ begin
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', ''),
-    coalesce(new.email, ''),
+    coalesce(
+      new.raw_user_meta_data->>'contact_email',
+      case
+        when coalesce(new.raw_user_meta_data->>'uses_phone_login_email', 'false') = 'true'
+          then ''
+        else new.email
+      end,
+      ''
+    ),
     coalesce(new.raw_user_meta_data->>'phone', ''),
     coalesce(new.raw_user_meta_data->>'avatar_url', ''),
     coalesce(new.raw_user_meta_data->>'customer_type', 'Particular'),

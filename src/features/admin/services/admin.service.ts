@@ -22,7 +22,7 @@ export const uploadAdminImage = async (file: File, folder: string) => {
 
   if (!supabase) {
     return {
-      error: "Supabase nao esta configurado no browser.",
+      error: "A base de dados da Bitoll nao esta configurada no browser.",
       url: "",
     };
   }

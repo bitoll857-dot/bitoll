@@ -1,26 +1,21 @@
-import { component$, type QRL, useSignal } from "@builder.io/qwik";
+import { $, component$, type QRL, useSignal } from "@builder.io/qwik";
 
 import PasswordField from "../fields/Password";
-import SelectField from "../fields/Select";
 import TextField from "../fields/Text";
 import Button from "../button/Button";
-import { signInWithGoogle, signUpWithPassword } from "~/lib/supabase/auth";
-
-const customerTypeOptions = [
-  { label: "Particular", value: "Particular" },
-  { label: "Empresa", value: "Empresa" },
-  { label: "Condominio", value: "Condominio" },
-  { label: "Industria", value: "Industria" },
-];
+import { showBitollToast } from "~/components/ui/toast";
+import { signUpWithPassword } from "~/lib/supabase/auth";
 
 type RegisterFormProps = {
   onAuthenticated$?: QRL<() => Promise<void> | void>;
 };
 
 export default component$<RegisterFormProps>(({ onAuthenticated$ }) => {
-  const errorMessage = useSignal("");
-  const successMessage = useSignal("");
   const isSubmitting = useSignal(false);
+
+  const showToast$ = $((title: string, message: string) => {
+    showBitollToast(title, message);
+  });
 
   return (
     <form
@@ -32,19 +27,14 @@ export default component$<RegisterFormProps>(({ onAuthenticated$ }) => {
         const password = String(formData.get("password") ?? "");
         const confirmPassword = String(formData.get("confirmPassword") ?? "");
 
-        errorMessage.value = "";
-        successMessage.value = "";
-
         if (password !== confirmPassword) {
-          errorMessage.value = "As palavras-passe nao coincidem.";
+          await showToast$("Dados incompletos", "As palavras-passe nao coincidem.");
           return;
         }
 
         isSubmitting.value = true;
 
         const result = await signUpWithPassword({
-          city: String(formData.get("city") ?? "").trim(),
-          customerType: String(formData.get("customerType") ?? "Particular"),
           email: String(formData.get("email") ?? "").trim(),
           name: String(formData.get("name") ?? "").trim(),
           password,
@@ -54,51 +44,17 @@ export default component$<RegisterFormProps>(({ onAuthenticated$ }) => {
         isSubmitting.value = false;
 
         if (!result.ok) {
-          errorMessage.value = result.message;
+          await showToast$("Conta nao criada", result.message);
           return;
         }
 
-        successMessage.value = result.message;
+        await showToast$("Conta criada", result.message);
 
         if (result.hasSession) {
           await onAuthenticated$?.();
         }
       }}
     >
-      <Button
-        type="button"
-        variant="secondary"
-        fullWidth
-        spacing="none"
-        buttonClass="flex h-12 items-center justify-center rounded-2xl text-sm font-bold"
-        onClick$={async () => {
-          errorMessage.value = "";
-          successMessage.value = "";
-          isSubmitting.value = true;
-
-          const result = await signInWithGoogle();
-
-          isSubmitting.value = false;
-
-          if (!result.ok) {
-            errorMessage.value = result.message;
-            return;
-          }
-
-          successMessage.value = result.message;
-        }}
-      >
-        Criar com Google
-      </Button>
-
-      <div class="flex items-center gap-3">
-        <div class="h-px flex-1 bg-slate-800" />
-        <span class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-          ou
-        </span>
-        <div class="h-px flex-1 bg-slate-800" />
-      </div>
-
       <TextField
         id="register-name"
         label="Nome completo"
@@ -107,6 +63,9 @@ export default component$<RegisterFormProps>(({ onAuthenticated$ }) => {
         autoComplete="name"
         required
       />
+      <p class="-mt-3 text-xs leading-5 text-slate-500">
+        O email e opcional. Pode ser adicionado ou alterado depois no perfil.
+      </p>
 
       <div class="grid gap-5 sm:grid-cols-2">
         <TextField
@@ -121,12 +80,11 @@ export default component$<RegisterFormProps>(({ onAuthenticated$ }) => {
 
         <TextField
           id="register-email"
-          label="Email"
+          label="Email de contacto"
           name="email"
           type="email"
-          placeholder="email@exemplo.com"
+          placeholder="Opcional"
           autoComplete="email"
-          required
         />
       </div>
 
@@ -146,25 +104,6 @@ export default component$<RegisterFormProps>(({ onAuthenticated$ }) => {
           name="confirmPassword"
           placeholder="Repetir palavra-passe"
           autoComplete="new-password"
-          required
-        />
-      </div>
-
-      <div class="grid gap-5 sm:grid-cols-2">
-        <SelectField
-          id="register-customer-type"
-          label="Tipo de cliente"
-          name="customerType"
-          options={customerTypeOptions}
-          required
-        />
-
-        <TextField
-          id="register-city"
-          label="Cidade"
-          name="city"
-          placeholder="Ex: Maputo"
-          autoComplete="address-level2"
           required
         />
       </div>
@@ -189,18 +128,6 @@ export default component$<RegisterFormProps>(({ onAuthenticated$ }) => {
         {isSubmitting.value ? "A criar..." : "Criar conta"}
       </Button>
 
-      {(errorMessage.value || successMessage.value) && (
-        <p
-          class={[
-            "rounded-2xl border px-4 py-3 text-sm leading-6",
-            errorMessage.value
-              ? "border-red-400/30 bg-red-400/10 text-red-200"
-              : "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
-          ]}
-        >
-          {errorMessage.value || successMessage.value}
-        </p>
-      )}
     </form>
   );
 });

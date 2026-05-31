@@ -2,16 +2,16 @@
 
 Este arquivo regista a linha de desenvolvimento da plataforma Bitoll. O README deve continuar focado numa explicacao breve do sistema, das funcionalidades principais e de como executar/acessar o projeto.
 
-## 30/05/2026 - Admin, Supabase e cotacao padrao
+## 30/05/2026 - Admin, base de dados da Bitoll e cotacao padrao
 
 ### Adicionado
 
-- Integracao do fluxo principal com Supabase para servicos, artigos, promocoes, cotacoes e dados do cliente.
+- Integracao do fluxo principal com a base de dados da Bitoll para servicos, artigos, promocoes, cotacoes e dados do cliente.
 - Painel administrativo com area de owner para gerir servicos, artigos, estruturas, cotacoes padrao, promocoes e solicitacoes.
 - Area de operador para acompanhar solicitacoes aprovadas e informar progresso do trabalho ao cliente.
 - Tabela `service_structure_options` para controlar as opcoes de estrutura de cada servico com titulo, descricao, imagem, ordem e estado publico/oculto.
 - Upload de imagens para servicos, artigos, promocoes e estruturas usando o bucket `bitoll-images`.
-- Limite de imagem de 0.3MB antes do envio para o Supabase Storage.
+- Limite de imagem de 0.3MB antes do envio para a base de dados da Bitoll.
 - Toasts de feedback para operacoes de criacao, edicao, upload, ativacao, desativacao e eliminacao no admin.
 - Entidades de cotacao padrao com templates, campos, artigos da cotacao e regras entre artigos.
 - Regras de calculo por artigo editavel pelo cliente usando formula em etapas: valor base, operador matematico e valor.
@@ -20,13 +20,13 @@ Este arquivo regista a linha de desenvolvimento da plataforma Bitoll. O README d
 
 ### Alterado
 
-- Modal de produtos necessarios do servico passou a carregar opcoes de estrutura do Supabase em vez de usar apenas dados estaticos.
+- Modal de produtos necessarios do servico passou a carregar opcoes de estrutura da base de dados da Bitoll em vez de usar apenas dados estaticos.
 - Formulario de cotacao do cliente passou a respeitar artigos editaveis, quantidades padrao e regras definidas na cotacao padrao.
 - Artigos do admin passaram a usar as estruturas cadastradas para o servico escolhido.
 - Cotacao padrao passou a selecionar artigos do servico escolhido e do servico independente.
 - Mao de obra passou a ser definida na cotacao padrao e vinculada a um artigo selecionado como multiplicador.
 - Imagens exibidas para servicos, artigos e promocoes passaram a usar URLs guardadas na base de dados.
-- URL do Supabase passou a ser normalizada para evitar uso incorreto de `/rest/v1/` como base publica.
+- URL da base de dados da Bitoll passou a ser normalizada para evitar uso incorreto de `/rest/v1/` como base publica.
 - Sidebar do usuario foi ajustada para refletir melhor a sessao ativa sem depender de reiniciar o navegador.
 
 ### Corrigido
@@ -41,7 +41,7 @@ Este arquivo regista a linha de desenvolvimento da plataforma Bitoll. O README d
 
 ### Nota de base de dados
 
-- O arquivo `supabase/schema.sql` precisa ser executado no SQL Editor da Supabase depois destas alteracoes para criar/atualizar tabelas, colunas e politicas RLS.
+- O arquivo `supabase/schema.sql` precisa ser executado no SQL Editor da base de dados da Bitoll depois destas alteracoes para criar/atualizar tabelas, colunas e politicas RLS.
 
 ## 28/05/2026 - Historico consolidado
 

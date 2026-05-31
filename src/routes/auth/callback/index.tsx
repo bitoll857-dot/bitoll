@@ -8,7 +8,7 @@ import {
 } from "~/lib/supabase/auth";
 
 export default component$(() => {
-  const status = useSignal("A confirmar a sessao com Supabase...");
+  const status = useSignal("A confirmar a sessao na base de dados da Bitoll...");
   const hasError = useSignal(false);
   const nav = useNavigate();
 

@@ -107,7 +107,7 @@ export const ServiceForm = component$<Props>(({ admin }) => {
 
           admin.showToast$(
             "Imagem selecionada",
-            `A carregar ${file.name} para o Supabase Storage.`,
+            `A carregar ${file.name} para a base de dados da Bitoll.`,
           );
 
           const upload = await uploadAdminImage(file, "services");
@@ -118,7 +118,7 @@ export const ServiceForm = component$<Props>(({ admin }) => {
             upload.url ? "Imagem carregada" : "Imagem nao carregada",
             upload.url
               ? "A imagem do servico foi carregada."
-              : upload.error || "Verifique o bucket bitoll-images no Supabase.",
+              : upload.error || "Verifique o bucket bitoll-images na base de dados da Bitoll.",
           );
         }}
       />
@@ -272,7 +272,7 @@ export const StructureOptionForm = component$<Props>(({ admin }) => {
 
           admin.showToast$(
             "Imagem selecionada",
-            `A carregar ${file.name} para o Supabase Storage.`,
+            `A carregar ${file.name} para a base de dados da Bitoll.`,
           );
 
           const upload = await uploadAdminImage(file, "structures");
@@ -283,7 +283,7 @@ export const StructureOptionForm = component$<Props>(({ admin }) => {
             upload.url ? "Imagem carregada" : "Imagem nao carregada",
             upload.url
               ? "A imagem da estrutura foi carregada."
-              : upload.error || "Verifique o bucket bitoll-images no Supabase.",
+              : upload.error || "Verifique o bucket bitoll-images na base de dados da Bitoll.",
           );
         }}
       />
@@ -475,7 +475,7 @@ export const ProductForm = component$<Props>(({ admin }) => {
 
           admin.showToast$(
             "Imagem selecionada",
-            `A carregar ${file.name} para o Supabase Storage.`,
+            `A carregar ${file.name} para a base de dados da Bitoll.`,
           );
 
           const upload = await uploadAdminImage(file, "articles");
@@ -486,7 +486,7 @@ export const ProductForm = component$<Props>(({ admin }) => {
             upload.url ? "Imagem carregada" : "Imagem nao carregada",
             upload.url
               ? "A imagem do artigo foi carregada."
-              : upload.error || "Verifique o bucket bitoll-images no Supabase.",
+              : upload.error || "Verifique o bucket bitoll-images na base de dados da Bitoll.",
           );
         }}
       />
@@ -1148,7 +1148,7 @@ export const PromotionForm = component$<Props>(({ admin }) => {
 
           admin.showToast$(
             "Imagem selecionada",
-            `A carregar ${file.name} para o Supabase Storage.`,
+            `A carregar ${file.name} para a base de dados da Bitoll.`,
           );
 
           const upload = await uploadAdminImage(file, "promotions");
@@ -1159,7 +1159,7 @@ export const PromotionForm = component$<Props>(({ admin }) => {
             upload.url ? "Imagem carregada" : "Imagem nao carregada",
             upload.url
               ? "A imagem da promocao foi carregada."
-              : upload.error || "Verifique o bucket bitoll-images no Supabase.",
+              : upload.error || "Verifique o bucket bitoll-images na base de dados da Bitoll.",
           );
         }}
       />

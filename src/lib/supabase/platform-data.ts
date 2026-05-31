@@ -581,7 +581,7 @@ export const loadCustomerProjectsFromSupabase = async (): Promise<CustomerProjec
           ? updates
           : [
               `Total registado: ${asNumber(quote.total).toLocaleString("pt-MZ")} ${quote.currency}`,
-              "Pedido guardado no Supabase.",
+              "Pedido guardado na base de dados da Bitoll.",
             ],
     };
   });

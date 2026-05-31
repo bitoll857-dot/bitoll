@@ -46,8 +46,8 @@ export default component$<AuthModalProps>(
 
               <p class="mt-2 max-w-[420px] text-sm leading-6 text-slate-400">
                 {isLogin
-                  ? "Acesse para guardar pedidos, interesses e historico de atendimento."
-                  : "A conta e opcional, mas ajuda a acompanhar pedidos e futuras respostas da Bitoll."}
+                  ? "Entre com telefone e palavra-passe, ou use a conta Google."
+                  : "Crie a conta com telefone, nome e palavra-passe. Email e morada podem ser adicionados mais tarde."}
               </p>
             </div>
 
