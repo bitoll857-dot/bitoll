@@ -13,6 +13,7 @@ import type { Service } from "~/types/services";
 import type {
   ServiceProduct,
   ServiceProductCatalog,
+  ServiceQuoteTemplateOption,
   ServiceStructureOption,
   StructureType,
 } from "~/types/service-products";
@@ -82,6 +83,7 @@ type StructureOptionRow = {
   service_slug: string;
   sort_order: number | string;
   structure: StructureType;
+  structure_cost_percentage: number | string;
   title: string;
 };
 
@@ -92,6 +94,7 @@ type QuoteTemplateRow = {
   labor_unit_price: number | string;
   service_slug: string;
   structure: StructureType;
+  structure_cost_percentage: number | string;
   title: string;
 };
 
@@ -219,6 +222,7 @@ const mapStructureOption = (row: StructureOptionRow): ServiceStructureOption => 
   imageUrl: row.image_url,
   imageAlt: row.title || row.structure,
   sortOrder: asNumber(row.sort_order),
+  structureCostPercentage: asNumber(row.structure_cost_percentage),
 });
 
 const mapTemplateItem = (
@@ -331,7 +335,7 @@ export const loadServiceStructureOptionsFromSupabase = async (
 
   const { data, error } = await supabase
     .from("service_structure_options")
-    .select("id,service_slug,structure,title,description,image_url,sort_order,active")
+    .select("id,service_slug,structure,title,description,image_url,sort_order,structure_cost_percentage,active")
     .eq("service_slug", serviceSlug)
     .eq("active", true)
     .order("sort_order", { ascending: true })
@@ -356,7 +360,7 @@ export const loadServiceProductsFromSupabase = async (
 
   const { data: templates } = await supabase
     .from("service_quote_templates")
-    .select("id,service_slug,title,structure,currency,labor_unit_price,labor_product_id")
+    .select("id,service_slug,title,structure,currency,labor_unit_price,labor_product_id,structure_cost_percentage")
     .eq("service_slug", serviceSlug)
     .eq("structure", structure)
     .eq("active", true)
@@ -407,20 +411,7 @@ export const loadServiceProductsFromSupabase = async (
     }
   }
 
-  const { data, error } = await supabase
-    .from("service_products")
-    .select(
-      "id,service_slug,structure,name,unit,quantity_label,estimated_quantity,unit_price,brand,model,system,category,description,detail,image_url,required",
-    )
-    .eq("service_slug", serviceSlug)
-    .eq("structure", structure)
-    .order("created_at", { ascending: true });
-
-  if (error || !data) {
-    return [];
-  }
-
-  return (data as ProductRow[]).map(mapProduct);
+  return [];
 };
 
 export const loadQuoteTemplateProductsFromSupabase = async (
@@ -434,7 +425,7 @@ export const loadQuoteTemplateProductsFromSupabase = async (
 
   const { data: templateData, error: templateError } = await supabase
     .from("service_quote_templates")
-    .select("id,service_slug,title,structure,currency,labor_unit_price,labor_product_id")
+    .select("id,service_slug,title,structure,currency,labor_unit_price,labor_product_id,structure_cost_percentage")
     .eq("id", templateId)
     .eq("active", true)
     .single();
@@ -487,6 +478,53 @@ export const loadQuoteTemplateProductsFromSupabase = async (
   }
 
   return products;
+};
+
+export const loadServiceQuoteTemplatesFromSupabase = async (
+  serviceSlug: string,
+  structure: StructureType,
+): Promise<ServiceQuoteTemplateOption[]> => {
+  const supabase = getSupabaseBrowserClient();
+
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("service_quote_templates")
+    .select("id,service_slug,title,structure,currency,labor_unit_price,labor_product_id,structure_cost_percentage")
+    .eq("service_slug", serviceSlug)
+    .eq("structure", structure)
+    .eq("active", true)
+    .order("title", { ascending: true });
+
+  if (error || !data) {
+    return [];
+  }
+
+  const templates = data as QuoteTemplateRow[];
+  const templatesWithProducts = await Promise.all(
+    templates.map(async (template) => {
+      const products = await loadQuoteTemplateProductsFromSupabase(template.id);
+
+      return {
+        currency: template.currency,
+        id: template.id,
+        products,
+        serviceSlug: template.service_slug,
+        structure: template.structure,
+        structureCostPercentage: asNumber(template.structure_cost_percentage),
+        subtotal: products.reduce(
+          (sum, product) =>
+            sum + (product.estimatedQuantity ?? 0) * (product.unitPrice ?? 0),
+          0,
+        ),
+        title: template.title,
+      };
+    }),
+  );
+
+  return templatesWithProducts;
 };
 
 export const loadServiceProductCatalogsFromSupabase = async () => {

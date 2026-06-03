@@ -12,6 +12,7 @@ export interface ServiceStructureOption extends StructureOption {
   id: string;
   serviceSlug: string;
   sortOrder: number;
+  structureCostPercentage: number;
 }
 
 export interface ServiceProduct {
@@ -40,6 +41,17 @@ export interface ServiceProduct {
   detail: string;
   imageUrl?: string;
   required: boolean;
+}
+
+export interface ServiceQuoteTemplateOption {
+  currency: string;
+  id: string;
+  products: ServiceProduct[];
+  serviceSlug: string;
+  structure: StructureType;
+  structureCostPercentage: number;
+  subtotal: number;
+  title: string;
 }
 
 export type ServiceProductsByStructure = Record<string, ServiceProduct[]>;

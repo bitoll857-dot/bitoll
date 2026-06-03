@@ -180,11 +180,27 @@ export const ServiceForm = component$<Props>(({ admin }) => {
 });
 
 export const StructureOptionForm = component$<Props>(({ admin }) => {
+  const existingStructure = admin.ownerStructureOptions.value.find(
+    (option) =>
+      option.service_slug === admin.structureOptionDraft.serviceSlug &&
+      option.structure === admin.structureOptionDraft.structure,
+  );
+  const isDuplicatedStructure =
+    Boolean(existingStructure) &&
+    existingStructure?.id !== admin.editingStructureOptionId.value;
+
   return (
     <form preventdefault:submit class="space-y-3">
       {admin.editingStructureOptionId.value && (
         <p class="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-100">
           A editar opcao de estrutura
+        </p>
+      )}
+
+      {isDuplicatedStructure && (
+        <p class="rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs font-bold leading-5 text-amber-100">
+          Esta estrutura ja existe para este servico. Use editar para atualizar
+          a estrutura cadastrada.
         </p>
       )}
 
@@ -318,6 +334,30 @@ export const StructureOptionForm = component$<Props>(({ admin }) => {
             );
           }}
         />
+      </label>
+
+      <label class="block">
+        <span class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+          Percentagem do custo da estrutura
+        </span>
+        <input
+          min={0}
+          step={0.01}
+          type="number"
+          value={admin.structureOptionDraft.structureCostPercentage}
+          placeholder="Ex: 10"
+          class="mt-2 h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-white outline-none"
+          onInput$={(event) => {
+            admin.structureOptionDraft.structureCostPercentage = Math.max(
+              0,
+              Number((event.target as HTMLInputElement).value || 0),
+            );
+          }}
+        />
+        <span class="mt-2 block text-xs leading-5 text-slate-500">
+          Aplica sobre o subtotal dos artigos desta estrutura, nao sobre o
+          total da factura pro-forma.
+        </span>
       </label>
 
       <label class="flex items-center gap-2 text-sm text-slate-300">
@@ -637,8 +677,8 @@ export const TemplateForm = component$<Props>(({ admin }) => {
         </p>
         <p class="mt-2 text-xs leading-5 text-slate-500">
           Os artigos vem do servico escolhido e do servico independente. Marque
-          quais entram nesta cotacao e quais podem ter quantidade editada pelo
-          cliente. A quantidade sera sempre numero inteiro.
+          quais entram nesta cotacao e defina a quantidade que o cliente vai
+          apenas rever na proforma. A quantidade sera sempre numero inteiro.
         </p>
 
         <div class="mt-4 space-y-3">
@@ -660,7 +700,7 @@ export const TemplateForm = component$<Props>(({ admin }) => {
                     </span>
                   </span>
 
-                  <div class="grid gap-2 text-xs font-bold text-slate-300 sm:grid-cols-2">
+                  <div class="grid gap-2 text-xs font-bold text-slate-300">
                     <label class="flex items-center gap-2">
                       <input
                         checked={selected}
@@ -695,33 +735,6 @@ export const TemplateForm = component$<Props>(({ admin }) => {
                       />
                       Entra na cotacao
                     </label>
-
-                    <label class="flex items-center gap-2">
-                      <input
-                        checked={editable}
-                        type="checkbox"
-                        onChange$={(event) => {
-                          const checked = (event.target as HTMLInputElement).checked;
-
-                          if (checked) {
-                            admin.templateDraft.selectedProductIds = Array.from(
-                              new Set([...admin.templateDraft.selectedProductIds, product.id]),
-                            );
-                            admin.templateDraft.productDefaultQuantities = {
-                              ...admin.templateDraft.productDefaultQuantities,
-                              [product.id]:
-                                admin.templateDraft.productDefaultQuantities[product.id] || 1,
-                            };
-                            admin.templateDraft.editableProductIds = Array.from(
-                              new Set([...admin.templateDraft.editableProductIds, product.id]),
-                            );
-                          } else {
-                            admin.templateDraft.editableProductIds = admin.templateDraft.editableProductIds.filter((id) => id !== product.id);
-                          }
-                        }}
-                      />
-                      Cliente edita qtd
-                    </label>
                   </div>
                 </div>
                 {selected && (
@@ -748,7 +761,7 @@ export const TemplateForm = component$<Props>(({ admin }) => {
                       />
                     </label>
 
-                    {editable && (
+                    {admin.templateDraft.editableProductIds.length < 0 && editable && (
                       <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
                         <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                           Artigos afetados por esta quantidade

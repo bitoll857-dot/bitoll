@@ -18,6 +18,7 @@ type QuoteRequestFormProps = {
     structureType?: string;
     products?: ServiceProduct[];
     discountAmount?: number;
+    structureCostPercentage?: number;
     currency?: string;
   };
 };
@@ -126,6 +127,7 @@ type ProformaPdfData = {
   customerPhone: string;
   rows: ProformaPdfRow[];
   subtotal: string;
+  structureCost: string;
   iva: string;
   discount: string;
   total: string;
@@ -201,13 +203,15 @@ const createProformaPdfBlob = (data: ProformaPdfData) => {
         "360 110 195 0 l S",
         drawPdfText(365, 92, 9, "Subtotal"),
         drawPdfText(480, 92, 9, data.subtotal),
-        drawPdfText(365, 76, 9, "IVA 12%"),
-        drawPdfText(480, 76, 9, data.iva),
-        drawPdfText(365, 60, 9, "Desconto"),
-        drawPdfText(480, 60, 9, `-${data.discount}`),
+        drawPdfText(365, 76, 9, "Custo estrutura"),
+        drawPdfText(480, 76, 9, data.structureCost),
+        drawPdfText(365, 60, 9, "IVA 12%"),
+        drawPdfText(480, 60, 9, data.iva),
+        drawPdfText(365, 44, 9, "Desconto"),
+        drawPdfText(480, 44, 9, `-${data.discount}`),
         "360 48 195 0 l S",
-        drawPdfText(365, 30, 11, "Total"),
-        drawPdfText(470, 30, 11, data.total),
+        drawPdfText(365, 24, 11, "Total"),
+        drawPdfText(470, 24, 11, data.total),
       );
     } else {
       commands.push(drawPdfText(470, 30, 8, `Pagina ${page + 1}/${pages}`));
@@ -378,6 +382,7 @@ export default component$<QuoteRequestFormProps>(
     const smartNeedsBackup = useSignal(true);
     const initialArticles = (initialData.products ?? []).map((product) => ({
       ...product,
+      clientQuantityEditable: false,
       locked: true,
     }));
     const hasLaborArticle = initialArticles.some((article) => {
@@ -410,85 +415,6 @@ export default component$<QuoteRequestFormProps>(
       toastTitle.value = "Artigo adicionado";
       toastMessage.value = `${article.name} foi adicionado a cotacao.`;
       toastOpen.value = true;
-    });
-
-    const updateArticleQuantity = $((articleId: string, quantity: number) => {
-      const safeQuantity = Math.max(1, Math.floor(quantity || 1));
-
-      const sourceArticle = articles.value.find((article) => article.id === articleId);
-      const rules = sourceArticle?.dependencyRules ?? [];
-      const changedQuantities = new Map<string, number>([
-        [articleId, safeQuantity],
-      ]);
-
-      const nextArticles = articles.value.map((article) => {
-        if (article.id === articleId) {
-          return {
-            ...article,
-            estimatedQuantity: safeQuantity,
-            quantity: `${safeQuantity} unidade(s)`,
-          };
-        }
-
-        const rule = rules.find((item) => item.targetProductId === article.id);
-
-        if (!rule) {
-          return article;
-        }
-
-        const rawQuantity = (rule.formulaSteps ?? []).reduce(
-          (current, step) => {
-            const value = Number(step.value || 0);
-
-            if (step.operator === "add") {
-              return current + value;
-            }
-
-            if (step.operator === "subtract") {
-              return current - value;
-            }
-
-            if (step.operator === "divide") {
-              return value === 0 ? current : current / value;
-            }
-
-            return current * value;
-          },
-          safeQuantity,
-        );
-        const rounded =
-          rule.rounding === "floor"
-            ? Math.floor(rawQuantity)
-            : rule.rounding === "round"
-              ? Math.round(rawQuantity)
-              : Math.ceil(rawQuantity);
-        const nextQuantity = Math.max(rule.minQuantity, rounded);
-        changedQuantities.set(article.id, nextQuantity);
-
-        return {
-          ...article,
-          estimatedQuantity: nextQuantity,
-          quantity: `${nextQuantity} unidade(s)`,
-        };
-      });
-
-      articles.value = nextArticles.map((article) => {
-        if (!article.laborSourceProductId) {
-          return article;
-        }
-
-        const laborQuantity = changedQuantities.get(article.laborSourceProductId);
-
-        if (!laborQuantity) {
-          return article;
-        }
-
-        return {
-          ...article,
-          estimatedQuantity: laborQuantity,
-          quantity: `${laborQuantity} servico(s)`,
-        };
-      });
     });
 
     const showToast = $((title: string, message: string) => {
@@ -526,6 +452,8 @@ export default component$<QuoteRequestFormProps>(
             source: initialData.source,
             originLabel: initialData.originLabel,
             structureType: initialData.structureType,
+            structureCostPercentage,
+            structureCost,
             selectedService: selectedService.value,
           },
           subtotal,
@@ -563,10 +491,17 @@ export default component$<QuoteRequestFormProps>(
 
     const downloadProformaPdf = $(() => {
       const pdfCurrency = initialData.currency ?? "MZN";
-      const pdfSubtotal = articles.value.reduce(
+      const pdfServiceSubtotal = articles.value.reduce(
         (sum, article) => sum + getArticleTotal(article),
         0,
       );
+      const pdfStructureCostPercentage = Math.max(
+        0,
+        initialData.structureCostPercentage ?? 0,
+      );
+      const pdfStructureCost =
+        pdfServiceSubtotal * (pdfStructureCostPercentage / 100);
+      const pdfSubtotal = pdfServiceSubtotal + pdfStructureCost;
       const pdfDiscount = initialData.discountAmount ?? 0;
       const pdfTaxable = Math.max(pdfSubtotal - pdfDiscount, 0);
       const pdfIva = pdfTaxable * IVA_RATE;
@@ -598,7 +533,8 @@ export default component$<QuoteRequestFormProps>(
             ? formatMoney(getArticleTotal(article), pdfCurrency)
             : "A avaliar",
         })),
-        subtotal: formatMoney(pdfSubtotal, pdfCurrency),
+        subtotal: formatMoney(pdfServiceSubtotal, pdfCurrency),
+        structureCost: formatMoney(pdfStructureCost, pdfCurrency),
         iva: formatMoney(pdfIva, pdfCurrency),
         discount: formatMoney(pdfDiscount, pdfCurrency),
         total: formatMoney(pdfTotal, pdfCurrency),
@@ -948,10 +884,16 @@ export default component$<QuoteRequestFormProps>(
         .includes(term);
     });
 
-    const subtotal = articles.value.reduce(
+    const serviceSubtotal = articles.value.reduce(
       (total, article) => total + getArticleTotal(article),
       0,
     );
+    const structureCostPercentage = Math.max(
+      0,
+      initialData.structureCostPercentage ?? 0,
+    );
+    const structureCost = serviceSubtotal * (structureCostPercentage / 100);
+    const subtotal = serviceSubtotal + structureCost;
     const discount = initialData.discountAmount ?? 0;
     const taxable = Math.max(subtotal - discount, 0);
     const iva = taxable * IVA_RATE;
@@ -972,6 +914,7 @@ export default component$<QuoteRequestFormProps>(
       selectedService.value === "motores-de-portoes";
     const isSmartTechService =
       selectedService.value === "tecnologia-inteligente";
+    const allowClientCalculations = false;
     const estimatedPerimeter = Math.ceil(
       (Math.max(0, wallWidthMeters.value) + Math.max(0, wallLengthMeters.value)) *
         2,
@@ -1080,7 +1023,8 @@ export default component$<QuoteRequestFormProps>(
               name="service"
               value={selectedService.value}
               required
-              class="mt-2 h-12 w-full rounded-2xl border border-slate-800 bg-slate-900/70 px-4 text-sm text-white outline-none transition duration-300 focus:border-cyan-400/50 focus:bg-slate-900"
+              disabled={!!initialData.service}
+              class="mt-2 h-12 w-full rounded-2xl border border-slate-800 bg-slate-900/70 px-4 text-sm text-white outline-none transition duration-300 disabled:text-slate-300 focus:border-cyan-400/50 focus:bg-slate-900"
               onChange$={(event) => {
                 selectedService.value = (event.target as HTMLSelectElement).value;
               }}
@@ -1125,7 +1069,8 @@ export default component$<QuoteRequestFormProps>(
           </p>
           <p class="mt-1 text-sm leading-6 text-slate-400">
             Envie fotos do muro, portao, entradas, sala tecnica ou local onde o
-            servico sera prestado. A simulacao ajuda a estimar materiais.
+            servico sera prestado. A equipa Bitoll usa estas imagens para
+            validar a cotacao preparada pelo admin.
           </p>
 
           <input
@@ -1141,13 +1086,9 @@ export default component$<QuoteRequestFormProps>(
 
           {hasWorkImages.value && (
             <div class="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm leading-6 text-cyan-100">
-              Match visual simulado activo.{" "}
+              Imagens anexadas para analise da equipa Bitoll.{" "}
               {isFenceService
-                ? `Para cerca electrica, o sistema estima cerca de ${estimatedPerimeter}m de perimetro, ${Math.ceil(
-                    estimatedPerimeter / 2.5,
-                  )} postes, ${estimatedPerimeter * 6}m de arame e ${Math.ceil(
-                    estimatedPerimeter / 20,
-                  )} pontos de cabo/ligacao.`
+                ? "Para cerca electrica, a equipa valida perimetro, pontos de cabo e materiais antes de confirmar."
                 : isCctvService
                   ? "Para CCTV, as imagens ajudam a confirmar angulos, zonas cegas, altura de fixacao e passagem de cabos."
                   : isGateMotorService
@@ -1158,7 +1099,7 @@ export default component$<QuoteRequestFormProps>(
             </div>
           )}
 
-          {isFenceService && (
+          {allowClientCalculations && isFenceService && (
             <div class="mt-5 rounded-3xl border border-slate-800 bg-slate-950/60 p-4">
               <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                 Medidas para calculo semi-automatico
@@ -1367,7 +1308,7 @@ export default component$<QuoteRequestFormProps>(
             </div>
           )}
 
-          {isCctvService && (
+          {allowClientCalculations && isCctvService && (
             <div class="mt-5 rounded-3xl border border-slate-800 bg-slate-950/60 p-4">
               <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                 Parametros dinamicos para CCTV
@@ -1518,7 +1459,7 @@ export default component$<QuoteRequestFormProps>(
             </div>
           )}
 
-          {isGateMotorService && (
+          {allowClientCalculations && isGateMotorService && (
             <div class="mt-5 rounded-3xl border border-slate-800 bg-slate-950/60 p-4">
               <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                 Parametros para motor de portao
@@ -1589,7 +1530,7 @@ export default component$<QuoteRequestFormProps>(
             </div>
           )}
 
-          {isSmartTechService && (
+          {allowClientCalculations && isSmartTechService && (
             <div class="mt-5 rounded-3xl border border-slate-800 bg-slate-950/60 p-4">
               <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                 Parametros para tecnologias inteligentes
@@ -1716,8 +1657,9 @@ export default component$<QuoteRequestFormProps>(
                 Artigos da cotacao
               </p>
               <p class="mt-1 text-sm text-slate-400">
-                Os artigos definidos pela Bitoll nao podem ser removidos. Podes
-                acrescentar artigos extras.
+                Esta proforma vem da cotacao recomendada preparada pela Bitoll.
+                O cliente pode rever e enviar o pedido, sem alterar artigos ou
+                quantidades.
               </p>
             </div>
           </div>
@@ -1732,8 +1674,7 @@ export default component$<QuoteRequestFormProps>(
                   <th class="py-3 pr-4">Quantidade</th>
                   <th class="py-3 pr-4">Unitario</th>
                   <th class="py-3 pr-4">Subtotal</th>
-                  <th class="py-3 pr-4">Origem</th>
-                  <th class="py-3">Acao</th>
+                  <th class="py-3">Origem</th>
                 </tr>
               </thead>
               <tbody>
@@ -1754,23 +1695,7 @@ export default component$<QuoteRequestFormProps>(
                       {article.system ?? article.category}
                     </td>
                     <td class="py-3 pr-4 text-sm text-cyan-200">
-                      {article.clientQuantityEditable ? (
-                        <input
-                          min={1}
-                          step={1}
-                          type="number"
-                          value={article.estimatedQuantity ?? 1}
-                          class="h-10 w-24 rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white outline-none"
-                          onInput$={(event) => {
-                            updateArticleQuantity(
-                              article.id,
-                              Number((event.target as HTMLInputElement).value || 1),
-                            );
-                          }}
-                        />
-                      ) : (
-                        article.quantity
-                      )}
+                      {article.quantity}
                     </td>
                     <td class="py-3 pr-4 text-sm text-slate-300">
                       {article.unitPrice
@@ -1782,55 +1707,15 @@ export default component$<QuoteRequestFormProps>(
                         ? formatMoney(getArticleTotal(article), currency)
                         : "A avaliar"}
                     </td>
-                    <td class="py-3 pr-4">
-                      <span class="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-xs text-slate-300">
-                        {article.locked ? "Recomendado" : "Cliente"}
-                      </span>
-                    </td>
                     <td class="py-3">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        spacing="none"
-                        buttonClass="rounded-xl px-3 py-2 text-xs"
-                        onClick$={() => {
-                          if (article.locked) {
-                            showToast(
-                              "Artigo bloqueado",
-                              "Este artigo faz parte da solucao recomendada e nao pode ser removido nesta cotacao.",
-                            );
-                            return;
-                          }
-
-                          articles.value = articles.value.filter(
-                            (item) => item.id !== article.id,
-                          );
-                          showToast(
-                            "Artigo removido",
-                            `${article.name} foi eliminado da cotacao.`,
-                          );
-                        }}
-                      >
-                        Remover
-                      </Button>
+                      <span class="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-xs text-slate-300">
+                        Recomendado
+                      </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-
-          <div class="mt-5">
-            <Button
-              variant="secondary"
-              spacing="none"
-              buttonClass="h-12 rounded-2xl px-4 text-sm font-semibold"
-              onClick$={() => {
-                articleSearchModal.value = true;
-              }}
-            >
-              Adicionar outro artigo
-            </Button>
           </div>
         </div>
 
@@ -1933,7 +1818,21 @@ export default component$<QuoteRequestFormProps>(
           </p>
           <div class="mt-4 space-y-3 text-sm">
             <div class="flex items-center justify-between gap-4">
-              <span class="text-slate-400">Subtotal</span>
+              <span class="text-slate-400">Subtotal dos artigos</span>
+              <span class="font-semibold text-slate-100">
+                {formatMoney(serviceSubtotal, currency)}
+              </span>
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <span class="text-slate-400">
+                Custo da estrutura ({structureCostPercentage}%)
+              </span>
+              <span class="font-semibold text-amber-200">
+                {formatMoney(structureCost, currency)}
+              </span>
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <span class="text-slate-400">Subtotal com estrutura</span>
               <span class="font-semibold text-slate-100">
                 {formatMoney(subtotal, currency)}
               </span>
@@ -2034,7 +1933,19 @@ export default component$<QuoteRequestFormProps>(
 
             <div class="ml-auto mt-5 w-full max-w-sm space-y-2 text-sm">
               <div class="flex justify-between">
-                <span>Subtotal</span>
+                <span>Subtotal dos artigos</span>
+                <span class="font-semibold">
+                  {formatMoney(serviceSubtotal, currency)}
+                </span>
+              </div>
+              <div class="flex justify-between">
+                <span>Custo da estrutura ({structureCostPercentage}%)</span>
+                <span class="font-semibold">
+                  {formatMoney(structureCost, currency)}
+                </span>
+              </div>
+              <div class="flex justify-between">
+                <span>Subtotal com estrutura</span>
                 <span class="font-semibold">{formatMoney(subtotal, currency)}</span>
               </div>
               <div class="flex justify-between">

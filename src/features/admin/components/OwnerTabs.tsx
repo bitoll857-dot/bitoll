@@ -25,6 +25,17 @@ const tabs: { value: OwnerTab; label: string }[] = [
   { value: "quotes", label: "Solicitacoes" },
 ];
 
+const tableClass = "w-full text-left text-sm max-md:block";
+const tableHeadClass =
+  "text-xs uppercase tracking-[0.14em] text-slate-500 max-md:hidden";
+const tableBodyClass =
+  "divide-y divide-slate-800 max-md:grid max-md:gap-3 max-md:divide-y-0";
+const tableRowClass =
+  "max-md:block max-md:rounded-xl max-md:border max-md:border-slate-800 max-md:bg-slate-950 max-md:p-4";
+const tableCellClass =
+  "py-3 max-md:flex max-md:items-start max-md:justify-between max-md:gap-4 max-md:border-b max-md:border-slate-800 max-md:py-3 max-md:text-right max-md:last:border-b-0 max-md:before:shrink-0 max-md:before:content-[attr(data-label)] max-md:before:text-left max-md:before:text-xs max-md:before:font-bold max-md:before:uppercase max-md:before:tracking-[0.12em] max-md:before:text-slate-500";
+const tableActionCellClass = `${tableCellClass} text-right`;
+
 export const OwnerTabs = component$<Props>(({ admin }) => {
   const searchTerm = admin.ownerSearch.value.trim().toLowerCase();
 
@@ -162,12 +173,12 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
 
             <div
               class={[
-                "overflow-x-auto",
+                "md:overflow-x-auto",
                 !admin.showOwnerForm.value ? "lg:col-span-2" : "",
               ]}
             >
-              <table class="w-full min-w-[560px] text-left text-sm">
-                <thead class="text-xs uppercase tracking-[0.14em] text-slate-500">
+              <table class={[tableClass, "md:min-w-[560px]"]}>
+                <thead class={tableHeadClass}>
                   <tr>
                     <th class="pb-3">Servico</th>
                     <th class="pb-3">Imagem</th>
@@ -176,10 +187,10 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                   </tr>
                 </thead>
 
-                <tbody class="divide-y divide-slate-800">
+                <tbody class={tableBodyClass}>
                   {filteredServices.map((service) => (
-                      <tr key={service.id}>
-                        <td class="py-3">
+                      <tr key={service.id} class={tableRowClass}>
+                        <td data-label="Servico" class={tableCellClass}>
                           <div class="font-semibold text-white">
                             {service.title}
                           </div>
@@ -189,7 +200,7 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                           </div>
                         </td>
 
-                        <td class="py-3 text-slate-400">
+                        <td data-label="Imagem" class={[tableCellClass, "text-slate-400"]}>
                           {service.image_url ? (
                             <img
                               src={service.image_url}
@@ -205,12 +216,12 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                           )}
                         </td>
 
-                        <td class="py-3 text-slate-300">
+                        <td data-label="Estado" class={[tableCellClass, "text-slate-300"]}>
                           {service.active ? "Publico" : "Oculto"}
                         </td>
 
-                        <td class="py-3 text-right">
-                          <div class="flex flex-col items-end">
+                        <td data-label="Acoes" class={tableActionCellClass}>
+                          <div class="flex flex-col items-end max-md:items-end">
                             <button
                               type="button"
                               class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"
@@ -307,12 +318,12 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
 
             <div
               class={[
-                "overflow-x-auto",
+                "md:overflow-x-auto",
                 !admin.showOwnerForm.value ? "lg:col-span-2" : "",
               ]}
             >
-              <table class="w-full min-w-[680px] text-left text-sm">
-                <thead class="text-xs uppercase tracking-[0.14em] text-slate-500">
+              <table class={[tableClass, "md:min-w-[680px]"]}>
+                <thead class={tableHeadClass}>
                   <tr>
                     <th class="pb-3">Estrutura</th>
                     <th class="pb-3">Imagem</th>
@@ -322,12 +333,16 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                   </tr>
                 </thead>
 
-                <tbody class="divide-y divide-slate-800">
+                <tbody class={tableBodyClass}>
                   {filteredStructures.map((option) => (
-                    <tr key={option.id}>
-                      <td class="py-3">
+                    <tr key={option.id} class={tableRowClass}>
+                      <td data-label="Estrutura" class={tableCellClass}>
                         <div class="font-semibold text-white">
-                          {option.title}
+                          {option.title}:{" "}
+                          {asNumber(
+                            option.structure_cost_percentage,
+                          ).toLocaleString("pt-MZ")}
+                          %
                         </div>
 
                         <div class="mt-1 text-xs text-slate-500">
@@ -335,7 +350,7 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                         </div>
                       </td>
 
-                      <td class="py-3 text-slate-400">
+                      <td data-label="Imagem" class={[tableCellClass, "text-slate-400"]}>
                         {option.image_url ? (
                           <img
                             src={option.image_url}
@@ -351,15 +366,15 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                         )}
                       </td>
 
-                      <td class="py-3 text-slate-300">
+                      <td data-label="Servico" class={[tableCellClass, "text-slate-300"]}>
                         {option.service_slug}
                       </td>
 
-                      <td class="py-3 text-slate-300">
+                      <td data-label="Estado" class={[tableCellClass, "text-slate-300"]}>
                         {option.active ? "Publico" : "Oculto"}
                       </td>
 
-                      <td class="py-3 text-right">
+                      <td data-label="Acoes" class={tableActionCellClass}>
                         <div class="flex flex-col items-end">
                           <button
                             type="button"
@@ -386,6 +401,9 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                                       `Estrutura: ${option.title}`,
                                       `Codigo: ${option.structure}`,
                                       `Servico: ${option.service_slug}`,
+                                      `Custo da estrutura: ${asNumber(
+                                        option.structure_cost_percentage,
+                                      ).toLocaleString("pt-MZ")}%`,
                                       `Descricao: ${
                                         option.description || "Sem descricao"
                                       }`,
@@ -460,12 +478,12 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
 
             <div
               class={[
-                "overflow-x-auto",
+                "md:overflow-x-auto",
                 !admin.showOwnerForm.value ? "lg:col-span-2" : "",
               ]}
             >
-              <table class="w-full min-w-[620px] text-left text-sm">
-                <thead class="text-xs uppercase tracking-[0.14em] text-slate-500">
+              <table class={[tableClass, "md:min-w-[620px]"]}>
+                <thead class={tableHeadClass}>
                   <tr>
                     <th class="pb-3">Artigo</th>
                     <th class="pb-3">Imagem</th>
@@ -476,10 +494,10 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                   </tr>
                 </thead>
 
-                <tbody class="divide-y divide-slate-800">
+                <tbody class={tableBodyClass}>
                   {filteredProducts.map((product) => (
-                    <tr key={product.id}>
-                      <td class="py-3">
+                    <tr key={product.id} class={tableRowClass}>
+                      <td data-label="Artigo" class={tableCellClass}>
                         <div class="font-semibold text-white">
                           {product.name}
                         </div>
@@ -489,7 +507,7 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                         </div>
                       </td>
 
-                      <td class="py-3 text-slate-400">
+                      <td data-label="Imagem" class={[tableCellClass, "text-slate-400"]}>
                         {product.image_url ? (
                           <img
                             src={product.image_url}
@@ -505,20 +523,20 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                         )}
                       </td>
 
-                      <td class="py-3 text-slate-300">
+                      <td data-label="Servico" class={[tableCellClass, "text-slate-300"]}>
                         {product.service_slug}
                       </td>
 
-                      <td class="py-3 text-slate-300">
+                      <td data-label="Preco" class={[tableCellClass, "text-slate-300"]}>
                         {asNumber(product.unit_price).toLocaleString("pt-MZ")}{" "}
                         MZN
                       </td>
 
-                      <td class="py-3 text-slate-300">
+                      <td data-label="Estado" class={[tableCellClass, "text-slate-300"]}>
                         {product.active ? "Publico" : "Oculto"}
                       </td>
 
-                      <td class="py-3 text-right">
+                      <td data-label="Acoes" class={tableActionCellClass}>
                         <div class="flex flex-col items-end">
                           <button
                             type="button"
@@ -618,12 +636,12 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
 
             <div
               class={[
-                "overflow-x-auto",
+                "md:overflow-x-auto",
                 !admin.showOwnerForm.value ? "lg:col-span-2" : "",
               ]}
             >
-              <table class="w-full min-w-[680px] text-left text-sm">
-                <thead class="text-xs uppercase tracking-[0.14em] text-slate-500">
+              <table class={[tableClass, "md:min-w-[680px]"]}>
+                <thead class={tableHeadClass}>
                   <tr>
                     <th class="pb-3">Cotacao padrao</th>
                     <th class="pb-3">Servico</th>
@@ -633,7 +651,7 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                   </tr>
                 </thead>
 
-                <tbody class="divide-y divide-slate-800">
+                <tbody class={tableBodyClass}>
                   {filteredTemplates.map((template) => {
                     const fields = admin.ownerTemplateFields.value.filter(
                       (field) => field.template_id === template.id,
@@ -644,8 +662,8 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                     );
 
                     return (
-                      <tr key={template.id}>
-                        <td class="py-3">
+                      <tr key={template.id} class={tableRowClass}>
+                        <td data-label="Cotacao padrao" class={tableCellClass}>
                           <div class="font-semibold text-white">
                             {template.title}
                           </div>
@@ -655,19 +673,19 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                           </div>
                         </td>
 
-                        <td class="py-3 text-slate-300">
+                        <td data-label="Servico" class={[tableCellClass, "text-slate-300"]}>
                           {template.service_slug}
                         </td>
 
-                        <td class="py-3 text-slate-300">
+                        <td data-label="Estrutura" class={[tableCellClass, "text-slate-300"]}>
                           {template.structure}
                         </td>
 
-                        <td class="py-3 text-slate-300">
+                        <td data-label="Estado" class={[tableCellClass, "text-slate-300"]}>
                           {template.active ? "Publico" : "Oculto"}
                         </td>
 
-                        <td class="py-3 text-right">
+                        <td data-label="Acoes" class={tableActionCellClass}>
                           <div class="flex flex-col items-end">
                             <button
                               type="button"
@@ -700,6 +718,9 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                                         `Mao de obra: ${asNumber(
                                           template.labor_unit_price,
                                         ).toLocaleString("pt-MZ")} ${template.currency}`,
+                                        `Custo da estrutura: ${asNumber(
+                                          template.structure_cost_percentage,
+                                        ).toLocaleString("pt-MZ")}%`,
                                         `Campo da mao de obra: ${
                                           fields.find(
                                             (field) =>
@@ -794,12 +815,12 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
 
             <div
               class={[
-                "overflow-x-auto",
+                "md:overflow-x-auto",
                 !admin.showOwnerForm.value ? "lg:col-span-2" : "",
               ]}
             >
-              <table class="w-full min-w-[680px] text-left text-sm">
-                <thead class="text-xs uppercase tracking-[0.14em] text-slate-500">
+              <table class={[tableClass, "md:min-w-[680px]"]}>
+                <thead class={tableHeadClass}>
                   <tr>
                     <th class="pb-3">Promocao</th>
                     <th class="pb-3">Imagem</th>
@@ -810,10 +831,10 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                   </tr>
                 </thead>
 
-                <tbody class="divide-y divide-slate-800">
+                <tbody class={tableBodyClass}>
                   {filteredPromotions.map((promotion) => (
-                    <tr key={promotion.id}>
-                      <td class="py-3">
+                    <tr key={promotion.id} class={tableRowClass}>
+                      <td data-label="Promocao" class={tableCellClass}>
                         <div class="font-semibold text-white">
                           {promotion.title}
                         </div>
@@ -823,7 +844,7 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                         </div>
                       </td>
 
-                      <td class="py-3 text-slate-400">
+                      <td data-label="Imagem" class={[tableCellClass, "text-slate-400"]}>
                         {promotion.image ? (
                           <img
                             src={promotion.image}
@@ -839,19 +860,19 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                         )}
                       </td>
 
-                      <td class="py-3 text-slate-300">
+                      <td data-label="Desconto" class={[tableCellClass, "text-slate-300"]}>
                         {promotion.discount_label || "Sem desconto"}
                       </td>
 
-                      <td class="py-3 text-slate-300">
+                      <td data-label="Servico" class={[tableCellClass, "text-slate-300"]}>
                         {promotion.service_slug ?? "Geral"}
                       </td>
 
-                      <td class="py-3 text-slate-300">
+                      <td data-label="Estado" class={[tableCellClass, "text-slate-300"]}>
                         {promotion.active ? "Publico" : "Oculto"}
                       </td>
 
-                      <td class="py-3 text-right">
+                      <td data-label="Acoes" class={tableActionCellClass}>
                         <div class="flex flex-col items-end">
                           <button
                             type="button"
@@ -956,9 +977,9 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
         )}
 
         {admin.ownerTab.value === "quotes" && (
-          <div class="mt-5 overflow-x-auto">
-            <table class="w-full min-w-[760px] text-left text-sm">
-              <thead class="text-xs uppercase tracking-[0.14em] text-slate-500">
+          <div class="mt-5 md:overflow-x-auto">
+            <table class={[tableClass, "md:min-w-[760px]"]}>
+              <thead class={tableHeadClass}>
                 <tr>
                   <th class="pb-3">Cotacao</th>
                   <th class="pb-3">Cliente</th>
@@ -969,10 +990,10 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                 </tr>
               </thead>
 
-              <tbody class="divide-y divide-slate-800">
+              <tbody class={tableBodyClass}>
                 {filteredQuotes.map((quote) => (
-                  <tr key={quote.id}>
-                    <td class="py-3">
+                  <tr key={quote.id} class={tableRowClass}>
+                    <td data-label="Cotacao" class={tableCellClass}>
                       <div class="font-semibold text-white">
                         {quote.quote_number}
                       </div>
@@ -982,7 +1003,7 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                       </div>
                     </td>
 
-                    <td class="py-3">
+                    <td data-label="Cliente" class={tableCellClass}>
                       <div class="font-semibold text-white">
                         {quote.profiles?.full_name ?? "Cliente"}
                       </div>
@@ -994,18 +1015,18 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                       </div>
                     </td>
 
-                    <td class="py-3 text-slate-300">
+                    <td data-label="Servico" class={[tableCellClass, "text-slate-300"]}>
                       {quote.service_slug ?? "Nao definido"}
                     </td>
 
-                    <td class="py-3 text-slate-300">
+                    <td data-label="Total" class={[tableCellClass, "text-slate-300"]}>
                       {asNumber(quote.total).toLocaleString("pt-MZ")}{" "}
                       {quote.currency}
                     </td>
 
-                    <td class="py-3 text-slate-300">{quote.status}</td>
+                    <td data-label="Estado" class={[tableCellClass, "text-slate-300"]}>{quote.status}</td>
 
-                    <td class="py-3 text-right">
+                    <td data-label="Acoes" class={tableActionCellClass}>
                       <button
                         type="button"
                         class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"

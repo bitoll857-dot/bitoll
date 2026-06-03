@@ -142,13 +142,13 @@ export const loadOwnerContent = async () => {
 
     supabase
       .from("service_structure_options")
-      .select("id,service_slug,structure,title,description,image_url,sort_order,active")
+      .select("id,service_slug,structure,title,description,image_url,sort_order,structure_cost_percentage,active")
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
 
     supabase
       .from("service_quote_templates")
-      .select("id,service_slug,title,structure,currency,labor_unit_price,labor_quantity_field_key,labor_product_id,notes,active")
+      .select("id,service_slug,title,structure,currency,labor_unit_price,labor_quantity_field_key,labor_product_id,structure_cost_percentage,notes,active")
       .order("created_at", { ascending: false })
       .limit(30),
 

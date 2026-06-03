@@ -13,6 +13,7 @@ type QuoteRequestModalProps = {
     structureType?: string;
     products?: ServiceProduct[];
     discountAmount?: number;
+    structureCostPercentage?: number;
     currency?: string;
   };
 };

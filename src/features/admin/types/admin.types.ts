@@ -86,6 +86,7 @@ export type AdminQuoteTemplate = {
   notes: string;
   service_slug: string;
   structure: string;
+  structure_cost_percentage: number | string;
   title: string;
 };
 
@@ -119,6 +120,7 @@ export type AdminStructureOption = {
   service_slug: string;
   sort_order: number | string;
   structure: string;
+  structure_cost_percentage: number | string;
   title: string;
 };
 

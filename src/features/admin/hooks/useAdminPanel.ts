@@ -29,7 +29,6 @@ import {
   asNumber,
   asStringArray,
   databaseToStatus,
-  productQuantityFieldKey,
   statusToDatabase,
   toSlug,
 } from "../utils/admin.utils";
@@ -138,6 +137,7 @@ export const useAdminPanel = () => {
     serviceSlug: "",
     sortOrder: 10,
     structure: "basica",
+    structureCostPercentage: 0,
     title: "",
   });
 
@@ -166,6 +166,7 @@ export const useAdminPanel = () => {
     selectedProductIds: [] as string[],
     serviceSlug: "",
     structure: "basica",
+    structureCostPercentage: 0,
     title: "",
   });
 
@@ -248,6 +249,7 @@ export const useAdminPanel = () => {
     structureOptionDraft.imageUrl = "";
     structureOptionDraft.sortOrder = 10;
     structureOptionDraft.structure = "basica";
+    structureOptionDraft.structureCostPercentage = 0;
     structureOptionDraft.title = "";
   });
 
@@ -264,6 +266,7 @@ export const useAdminPanel = () => {
     templateDraft.productRules = {};
     templateDraft.selectedProductIds = [];
     templateDraft.structure = "basica";
+    templateDraft.structureCostPercentage = 0;
     templateDraft.title = "";
   });
 
@@ -459,9 +462,37 @@ export const useAdminPanel = () => {
       service_slug: structureOptionDraft.serviceSlug,
       sort_order: structureOptionDraft.sortOrder,
       structure: structureOptionDraft.structure,
+      structure_cost_percentage: Math.max(
+        0,
+        asNumber(structureOptionDraft.structureCostPercentage),
+      ),
       title: structureOptionDraft.title,
       updated_at: new Date().toISOString(),
     };
+
+    const existingStructure = ownerStructureOptions.value.find(
+      (option) =>
+        option.service_slug === structureOptionDraft.serviceSlug &&
+        option.structure === structureOptionDraft.structure,
+    );
+
+    if (existingStructure && !editingStructureOptionId.value) {
+      editingStructureOptionId.value = existingStructure.id;
+      structureOptionDraft.active = existingStructure.active;
+      structureOptionDraft.description = existingStructure.description;
+      structureOptionDraft.imageName = "";
+      structureOptionDraft.imagePreviewUrl = "";
+      structureOptionDraft.imageUrl = existingStructure.image_url;
+      structureOptionDraft.sortOrder = asNumber(existingStructure.sort_order || 10);
+      structureOptionDraft.structureCostPercentage = asNumber(
+        existingStructure.structure_cost_percentage,
+      );
+      structureOptionDraft.title = existingStructure.title;
+      feedback.value =
+        "Esta estrutura ja existe para este servico. Atualize a estrutura existente em vez de criar outra.";
+      showToast$("Estrutura ja cadastrada", feedback.value);
+      return;
+    }
 
     const { error } = editingStructureOptionId.value
       ? await supabase
@@ -514,29 +545,27 @@ export const useAdminPanel = () => {
       return;
     }
 
-    const fields = ownerProducts.value
-      .filter((product) => templateDraft.editableProductIds.includes(product.id))
-      .map((product, index) => ({
-        field_key: productQuantityFieldKey(product.id),
-        input_type: "number",
-        label: `Quantidade de ${product.name}`,
-        required: true,
-        sort_order: index + 1,
-      }));
+    const fields: {
+      field_key: string;
+      input_type: string;
+      label: string;
+      required: boolean;
+      sort_order: number;
+    }[] = [];
 
     const templatePayload = {
       active: templateDraft.active,
       currency: templateDraft.currency,
       labor_product_id: templateDraft.laborProductId,
-      labor_quantity_field_key: templateDraft.editableProductIds.includes(
-        templateDraft.laborProductId,
-      )
-        ? productQuantityFieldKey(templateDraft.laborProductId)
-        : "",
+      labor_quantity_field_key: "",
       labor_unit_price: templateDraft.laborUnitPrice,
       notes: templateDraft.notes,
       service_slug: templateDraft.serviceSlug,
       structure: templateDraft.structure,
+      structure_cost_percentage: Math.max(
+        0,
+        asNumber(templateDraft.structureCostPercentage),
+      ),
       title: templateDraft.title,
       updated_at: new Date().toISOString(),
     };
@@ -589,17 +618,14 @@ export const useAdminPanel = () => {
     const { error: itemsError } = selectedProducts.length
       ? await supabase.from("service_quote_template_items").insert(
           selectedProducts.map((product, index) => ({
-            client_quantity_editable:
-              templateDraft.editableProductIds.includes(product.id),
+            client_quantity_editable: false,
             default_quantity: Math.max(
               1,
               Math.floor(templateDraft.productDefaultQuantities[product.id] || 1),
             ),
             name: product.name,
             product_id: product.id,
-            quantity_field_key: templateDraft.editableProductIds.includes(product.id)
-              ? productQuantityFieldKey(product.id)
-              : "",
+            quantity_field_key: "",
             sort_order: index + 1,
             template_id: templateId,
             unit: "Un",
@@ -608,26 +634,19 @@ export const useAdminPanel = () => {
         )
       : { error: null };
 
-    const ruleRows = Object.entries(templateDraft.productRules).flatMap(
-      ([sourceProductId, rulesByTarget]) =>
-        Object.entries(rulesByTarget)
-          .filter(
-            ([targetProductId]) =>
-              templateDraft.editableProductIds.includes(sourceProductId) &&
-              templateDraft.selectedProductIds.includes(sourceProductId) &&
-              templateDraft.selectedProductIds.includes(targetProductId),
-          )
-          .map(([targetProductId, rule]) => ({
-            divisor: 1,
-            formula_steps: rule.formulaSteps,
-            min_quantity: Math.max(0, Math.floor(rule.minQuantity || 0)),
-            multiplier: 1,
-            rounding: rule.rounding || "ceil",
-            source_product_id: sourceProductId,
-            target_product_id: targetProductId,
-            template_id: templateId,
-          })),
-    );
+    const ruleRows: {
+      divisor: number;
+      formula_steps: {
+        operator: "add" | "subtract" | "multiply" | "divide";
+        value: number;
+      }[];
+      min_quantity: number;
+      multiplier: number;
+      rounding: "ceil" | "floor" | "round";
+      source_product_id: string;
+      target_product_id: string;
+      template_id: string;
+    }[] = [];
 
     const { error: rulesError } = ruleRows.length
       ? await supabase.from("service_quote_template_item_rules").insert(ruleRows)
@@ -798,6 +817,9 @@ export const useAdminPanel = () => {
     structureOptionDraft.serviceSlug = option.service_slug;
     structureOptionDraft.sortOrder = asNumber(option.sort_order || 10);
     structureOptionDraft.structure = option.structure;
+    structureOptionDraft.structureCostPercentage = asNumber(
+      option.structure_cost_percentage,
+    );
     structureOptionDraft.title = option.title;
 
     showToast$("Estrutura em edicao", option.title);
@@ -821,6 +843,9 @@ export const useAdminPanel = () => {
     templateDraft.laborUnitPrice = asNumber(template.labor_unit_price);
 
     templateDraft.notes = template.notes;
+    templateDraft.structureCostPercentage = asNumber(
+      template.structure_cost_percentage,
+    );
     templateDraft.productDefaultQuantities = items.reduce(
       (acc, item) => {
         if (item.product_id) {

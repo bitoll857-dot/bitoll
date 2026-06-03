@@ -441,6 +441,12 @@ export default component$(() => {
     panelMode.value === "completed"
       ? projects.value.filter((project) => project.status === "Concluido")
       : projects.value.filter((project) => project.status !== "Concluido");
+  const completedProjectsCount = projects.value.filter(
+    (project) => project.status === "Concluido",
+  ).length;
+  const activeProjectsCount = projects.value.filter(
+    (project) => project.status !== "Concluido",
+  ).length;
   const chatContext = {
     catalogs: catalogs.value,
     projects: projects.value,
@@ -460,6 +466,7 @@ export default component$(() => {
         <div class="mx-auto grid w-full max-w-[460px] grid-cols-3 gap-2 md:mx-0 md:w-[74px] md:max-w-none md:grid-cols-1 md:gap-3 md:rounded-[28px] md:border md:border-slate-800 md:bg-slate-950/88 md:p-3 md:shadow-[0_22px_80px_rgba(2,6,23,0.40)] md:backdrop-blur-xl">
           {[
             {
+              count: completedProjectsCount,
               mode: "completed" as const,
               label: "Abrir servicos terminados",
               text: "Terminados",
@@ -467,6 +474,7 @@ export default component$(() => {
                 "border-emerald-400/30 bg-emerald-400/15 text-emerald-200 hover:bg-emerald-400 hover:text-slate-950",
             },
             {
+              count: activeProjectsCount,
               mode: "active" as const,
               label: "Abrir servicos em andamento",
               text: "Em andamento",
@@ -474,6 +482,7 @@ export default component$(() => {
                 "border-cyan-400/30 bg-cyan-400/15 text-cyan-200 hover:bg-cyan-400 hover:text-slate-950",
             },
             {
+              count: 0,
               mode: "chat" as const,
               label: "Abrir chat GBS",
               text: "Chat GBS",
@@ -488,7 +497,7 @@ export default component$(() => {
               title={action.label}
               data-guide={action.mode === "active" ? "projects" : undefined}
               class={[
-                "flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-[11px] font-bold leading-tight transition duration-300 hover:-translate-y-0.5 md:h-14 md:w-14 md:rounded-2xl md:px-0 md:[&>span]:sr-only",
+                "relative flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2 text-[11px] font-bold leading-tight transition duration-300 hover:-translate-y-0.5 md:h-14 md:w-14 md:rounded-2xl md:px-0 md:[&>span]:sr-only",
                 action.tone,
               ]}
               onClick$={() => {
@@ -497,6 +506,14 @@ export default component$(() => {
             >
               <ActionIcon mode={action.mode} />
               <span class="min-w-0 truncate">{action.text}</span>
+              {action.mode !== "chat" && (
+                <span
+                  aria-label={`${action.count} servicos`}
+                  class="absolute -right-1.5 -top-2 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-slate-950 bg-red-500 px-1.5 text-[11px] font-black leading-none text-white shadow-lg shadow-red-950/30 md:-right-2 md:-top-2"
+                >
+                  {action.count > 99 ? "99+" : action.count}
+                </span>
+              )}
             </button>
           ))}
         </div>

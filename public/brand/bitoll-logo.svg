@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 180" role="img" aria-label="Bitoll">
+  <defs>
+    <linearGradient id="mark-b" x1="55" x2="168" y1="20" y2="158" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#052E5D"/>
+      <stop offset=".49" stop-color="#052E5D"/>
+      <stop offset=".5" stop-color="#0B74D1"/>
+      <stop offset="1" stop-color="#0875D8"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(0 0)">
+    <text x="44" y="154" fill="url(#mark-b)" font-family="Arial Black, Montserrat, Arial, sans-serif" font-size="168" font-weight="900">B</text>
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="10">
+      <path stroke="#052E5D" d="M12 71h53l30-30h42"/>
+      <path stroke="#19C7E8" d="M12 94h70l44-44"/>
+      <path stroke="#0B74D1" d="M12 118h85l44-44"/>
+      <circle cx="12" cy="71" r="10" fill="#FFFFFF" stroke="#052E5D"/>
+      <circle cx="12" cy="94" r="10" fill="#FFFFFF" stroke="#19C7E8"/>
+      <circle cx="12" cy="118" r="10" fill="#FFFFFF" stroke="#0B74D1"/>
+    </g>
+  </g>
+  <text x="235" y="125" fill="#052E5D" font-family="Arial Black, Montserrat, Arial, sans-serif" font-size="96" font-weight="900" letter-spacing="-4">Bitoll</text>
+</svg>

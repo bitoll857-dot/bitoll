@@ -106,6 +106,7 @@ create table if not exists public.service_structure_options (
   description text not null default '',
   image_url text not null default '',
   sort_order integer not null default 0,
+  structure_cost_percentage numeric not null default 0,
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -121,6 +122,7 @@ create table if not exists public.service_quote_templates (
   labor_unit_price numeric not null default 0,
   labor_quantity_field_key text not null default '',
   labor_product_id uuid references public.service_products(id) on delete set null,
+  structure_cost_percentage numeric not null default 0,
   notes text not null default '',
   active boolean not null default true,
   created_at timestamptz not null default now(),
@@ -367,6 +369,7 @@ alter table public.service_structure_options add column if not exists title text
 alter table public.service_structure_options add column if not exists description text not null default '';
 alter table public.service_structure_options add column if not exists image_url text not null default '';
 alter table public.service_structure_options add column if not exists sort_order integer not null default 0;
+alter table public.service_structure_options add column if not exists structure_cost_percentage numeric not null default 0;
 alter table public.service_structure_options add column if not exists active boolean not null default true;
 alter table public.service_structure_options add column if not exists updated_at timestamptz not null default now();
 
@@ -382,6 +385,7 @@ alter table public.service_quote_templates add column if not exists notes text n
 alter table public.service_quote_templates add column if not exists labor_unit_price numeric not null default 0;
 alter table public.service_quote_templates add column if not exists labor_quantity_field_key text not null default '';
 alter table public.service_quote_templates add column if not exists labor_product_id uuid references public.service_products(id) on delete set null;
+alter table public.service_quote_templates add column if not exists structure_cost_percentage numeric not null default 0;
 alter table public.service_quote_templates add column if not exists updated_at timestamptz not null default now();
 
 alter table public.promotions add column if not exists slug text;
