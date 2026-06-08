@@ -14,8 +14,10 @@ export type OperatorQuote = {
   currency: string;
   created_at: string;
   progress: number | string;
+  request_payload: Record<string, unknown> | null;
   next_step: string;
   technician: string;
+  technician_id?: string | null;
   estimated_completion: string | null;
   updates: string[];
   profiles: {
@@ -56,12 +58,60 @@ export type AdminService = {
 export type AdminProduct = {
   active: boolean;
   brand: string;
+  category: string;
   id: string;
   image_url: string;
   name: string;
   service_slug: string;
   structure: string;
+  unit: string;
   unit_price: number | string;
+};
+
+export type AdminCustomer = {
+  city: string | null;
+  email: string | null;
+  full_name: string | null;
+  id: string;
+  phone: string | null;
+};
+
+export type AdminOperatorUser = {
+  email: string | null;
+  full_name: string | null;
+  id: string;
+  phone: string | null;
+  role: "operador";
+};
+
+export type CustomQuoteDraftItem = {
+  category: string;
+  id: string;
+  imageUrl: string;
+  name: string;
+  quantity: number;
+  serviceSlug: string;
+  structure: string;
+  unit: string;
+  unitPrice: number;
+};
+
+export type AdminCustomQuote = {
+  created_at: string;
+  currency: string;
+  customer_address: string;
+  customer_contact: string;
+  customer_name: string;
+  customer_nuit: string;
+  customer_type: string;
+  id: string;
+  notes: string;
+  quote_number: string;
+  selected_items: CustomQuoteDraftItem[];
+  service_slug: string | null;
+  status: string;
+  subtotal: number | string;
+  total: number | string;
 };
 
 export type AdminPromotion = {
@@ -119,6 +169,7 @@ export type AdminStructureOption = {
   image_url: string;
   service_slug: string;
   sort_order: number | string;
+  steps: string[];
   structure: string;
   structure_cost_percentage: number | string;
   title: string;
@@ -144,5 +195,6 @@ export type OwnerTab =
   | "structures"
   | "products"
   | "templates"
+  | "customQuotes"
   | "promotions"
   | "quotes";

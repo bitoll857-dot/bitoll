@@ -1,6 +1,8 @@
 import { getSupabaseBrowserClient } from "~/lib/supabase/client";
 
 import type {
+  AdminCustomQuote,
+  AdminOperatorUser,
   AdminProduct,
   AdminPromotion,
   AdminQuoteTemplate,
@@ -75,7 +77,7 @@ export const loadOperatorQuotes = async () => {
   const { data, error } = await supabase
     .from("quotes")
     .select(
-      "id,quote_number,service_slug,status,total,currency,created_at,progress,next_step,technician,estimated_completion,updates,profiles(full_name,email,phone,city)",
+      "id,quote_number,service_slug,status,total,currency,created_at,request_payload,progress,next_step,technician,technician_id,estimated_completion,updates,profiles(full_name,email,phone,city)",
     )
     .in("status", [
       "aprovado",
@@ -106,6 +108,9 @@ export const loadOwnerContent = async () => {
 
   if (!supabase) {
     return {
+      customers: [],
+      customQuotes: [],
+      operators: [],
       products: [],
       promotions: [],
       services: [],
@@ -126,6 +131,9 @@ export const loadOwnerContent = async () => {
     templateItems,
     templateRules,
     promotions,
+    customers,
+    customQuotes,
+    operators,
   ] = await Promise.all([
     supabase
       .from("services")
@@ -136,13 +144,13 @@ export const loadOwnerContent = async () => {
 
     supabase
       .from("service_products")
-      .select("id,service_slug,structure,name,unit_price,brand,image_url,active")
+      .select("id,service_slug,structure,name,unit,unit_price,brand,category,image_url,active")
       .order("created_at", { ascending: false })
-      .limit(30),
+      .limit(120),
 
     supabase
       .from("service_structure_options")
-      .select("id,service_slug,structure,title,description,image_url,sort_order,structure_cost_percentage,active")
+      .select("id,service_slug,structure,title,description,image_url,steps,sort_order,structure_cost_percentage,active")
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
 
@@ -173,9 +181,63 @@ export const loadOwnerContent = async () => {
       )
       .order("created_at", { ascending: false })
       .limit(30),
+
+    supabase
+      .from("profiles")
+      .select("id,full_name,email,phone,city")
+      .order("created_at", { ascending: false })
+      .limit(80),
+
+    supabase
+      .from("custom_quotes")
+      .select(
+        "id,quote_number,customer_name,customer_contact,customer_address,customer_nuit,customer_type,service_slug,subtotal,total,currency,status,notes,selected_items,created_at",
+      )
+      .order("created_at", { ascending: false })
+      .limit(80),
+
+    supabase
+      .from("admin_users")
+      .select("role,profiles(id,full_name,email,phone)")
+      .eq("role", "operador"),
   ]);
 
   return {
+    customers: customers.data ?? [],
+    customQuotes: (customQuotes.data ?? []) as AdminCustomQuote[],
+    operators: ((operators.data ?? []) as {
+      profiles:
+        | {
+            email: string | null;
+            full_name: string | null;
+            id: string;
+            phone: string | null;
+          }
+        | {
+            email: string | null;
+            full_name: string | null;
+            id: string;
+            phone: string | null;
+          }[]
+        | null;
+      role: "operador";
+    }[])
+      .map((operator) => {
+        const profile = Array.isArray(operator.profiles)
+          ? operator.profiles[0] ?? null
+          : operator.profiles;
+
+        return profile
+          ? {
+              email: profile.email,
+              full_name: profile.full_name,
+              id: profile.id,
+              phone: profile.phone,
+              role: "operador" as const,
+            }
+          : null;
+      })
+      .filter((operator): operator is AdminOperatorUser => Boolean(operator)),
     products: (products.data ?? []) as AdminProduct[],
     promotions: (promotions.data ?? []) as AdminPromotion[],
     services: (services.data ?? []) as AdminService[],

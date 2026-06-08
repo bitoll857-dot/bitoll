@@ -34,7 +34,10 @@ import {
 } from "../utils/admin.utils";
 
 import type {
+  AdminCustomer,
+  AdminCustomQuote,
   AdminMetric,
+  AdminOperatorUser,
   AdminProduct,
   AdminPromotion,
   AdminQuoteTemplate,
@@ -43,6 +46,7 @@ import type {
   AdminTemplateField,
   AdminTemplateItem,
   AdminTemplateRule,
+  CustomQuoteDraftItem,
   OperatorDraft,
   OperatorQuote,
   OwnerTab,
@@ -60,6 +64,8 @@ type AdminContentTable =
   | "service_quote_templates"
   | "services";
 
+type AdminConfirmAction = "toggle" | "delete" | "";
+
 export const useAdminPanel = () => {
   const authUser = useSignal<User | null>(null);
   const adminAccess = useSignal<AdminAccess>(emptyAccess);
@@ -76,10 +82,13 @@ export const useAdminPanel = () => {
   const ownerTemplateItems = useSignal<AdminTemplateItem[]>([]);
   const ownerTemplateRules = useSignal<AdminTemplateRule[]>([]);
   const ownerPromotions = useSignal<AdminPromotion[]>([]);
+  const ownerCustomers = useSignal<AdminCustomer[]>([]);
+  const ownerCustomQuotes = useSignal<AdminCustomQuote[]>([]);
+  const ownerOperators = useSignal<AdminOperatorUser[]>([]);
 
   const ownerTab = useSignal<OwnerTab>("services");
   const ownerSearch = useSignal("");
-  const showOwnerForm = useSignal(true);
+  const showOwnerForm = useSignal(false);
 
   const editingServiceId = useSignal("");
   const editingStructureOptionId = useSignal("");
@@ -92,6 +101,10 @@ export const useAdminPanel = () => {
   const openProductActionsId = useSignal("");
   const openTemplateActionsId = useSignal("");
   const openPromotionActionsId = useSignal("");
+  const quoteProcedureOpen = useSignal(false);
+  const quoteProcedureQuoteId = useSignal("");
+  const quoteProcedureOperatorId = useSignal("");
+  const quoteProcedureStepIndex = useSignal(0);
 
   const feedback = useSignal("");
 
@@ -102,6 +115,19 @@ export const useAdminPanel = () => {
   const detailsOpen = useSignal(false);
   const detailsTitle = useSignal("");
   const detailsMessage = useSignal("");
+  const detailsImageUrl = useSignal("");
+
+  const confirmOpen = useSignal(false);
+  const confirmTitle = useSignal("");
+  const confirmMessage = useSignal("");
+  const confirmLabel = useSignal("");
+  const confirmTone = useSignal<"danger" | "default">("default");
+  const confirmAction = useStore({
+    active: false,
+    id: "",
+    table: "" as AdminContentTable | "",
+    type: "" as AdminConfirmAction,
+  });
 
   const drafts = useStore<Record<string, OperatorDraft>>({});
 
@@ -136,6 +162,7 @@ export const useAdminPanel = () => {
     imageUrl: "",
     serviceSlug: "",
     sortOrder: 10,
+    stepsText: "",
     structure: "basica",
     structureCostPercentage: 0,
     title: "",
@@ -183,6 +210,24 @@ export const useAdminPanel = () => {
     title: "",
   });
 
+  const customQuoteProductPickerOpen = useSignal(false);
+  const customQuoteProductSearch = useSignal("");
+  const customQuoteFormOpen = useSignal(false);
+  const customQuoteLastCreatedId = useSignal("");
+  const customQuoteTableOpen = useSignal(false);
+  const customQuoteDraft = useStore({
+    contacto: "",
+    currency: "MZN",
+    customerMode: "registered" as "registered" | "temporary",
+    customerName: "",
+    items: [] as CustomQuoteDraftItem[],
+    morada: "",
+    notes: "",
+    nuit: "",
+    profileId: "",
+    serviceSlug: "",
+  });
+
   const closeToast$ = $(() => {
     toastOpen.value = false;
     toastTitle.value = "";
@@ -193,6 +238,7 @@ export const useAdminPanel = () => {
     detailsOpen.value = false;
     detailsTitle.value = "";
     detailsMessage.value = "";
+    detailsImageUrl.value = "";
   });
 
   const showToast$ = $((title: string, message: string) => {
@@ -207,10 +253,23 @@ export const useAdminPanel = () => {
     }, 5000);
   });
 
-  const showDetails$ = $((title: string, message: string) => {
+  const showDetails$ = $((title: string, message: string, imageUrl = "") => {
     detailsTitle.value = title;
     detailsMessage.value = message;
+    detailsImageUrl.value = imageUrl;
     detailsOpen.value = true;
+  });
+
+  const closeConfirm$ = $(() => {
+    confirmOpen.value = false;
+    confirmTitle.value = "";
+    confirmMessage.value = "";
+    confirmLabel.value = "";
+    confirmTone.value = "default";
+    confirmAction.active = false;
+    confirmAction.id = "";
+    confirmAction.table = "";
+    confirmAction.type = "";
   });
 
   const resetServiceDraft$ = $(() => {
@@ -248,6 +307,7 @@ export const useAdminPanel = () => {
     structureOptionDraft.imagePreviewUrl = "";
     structureOptionDraft.imageUrl = "";
     structureOptionDraft.sortOrder = 10;
+    structureOptionDraft.stepsText = "";
     structureOptionDraft.structure = "basica";
     structureOptionDraft.structureCostPercentage = 0;
     structureOptionDraft.title = "";
@@ -292,9 +352,9 @@ export const useAdminPanel = () => {
       drafts[quote.id] = {
         estimatedCompletion: quote.estimated_completion ?? "",
         nextStep: quote.next_step || "",
-        progress: Math.min(100, Math.max(0, asNumber(quote.progress || 35))),
+        progress: Math.min(100, Math.max(0, asNumber(quote.progress ?? 0))),
         status: databaseToStatus(quote.status),
-        technician: quote.technician || "Equipa Bitoll",
+        technician: quote.technician || "",
         updatesText: asStringArray(quote.updates).join("\n"),
       };
     }
@@ -311,9 +371,25 @@ export const useAdminPanel = () => {
     ownerTemplateItems.value = content.templateItems;
     ownerTemplateRules.value = content.templateRules;
     ownerPromotions.value = content.promotions;
+    ownerCustomers.value = content.customers;
+    ownerCustomQuotes.value = content.customQuotes;
+    ownerOperators.value = content.operators;
 
     if (!productDraft.serviceSlug && content.services[0]) {
       productDraft.serviceSlug = content.services[0].slug;
+    }
+
+    const productStructures = content.structureOptions.filter(
+      (option) => option.service_slug === productDraft.serviceSlug,
+    );
+
+    if (
+      productDraft.serviceSlug &&
+      !productStructures.some(
+        (option) => option.structure === productDraft.structure,
+      )
+    ) {
+      productDraft.structure = productStructures[0]?.structure ?? "";
     }
 
     if (!structureOptionDraft.serviceSlug && content.services[0]) {
@@ -327,6 +403,7 @@ export const useAdminPanel = () => {
     if (!promotionDraft.serviceSlug && content.services[0]) {
       promotionDraft.serviceSlug = content.services[0].slug;
     }
+
   });
 
   const saveService$ = $(async () => {
@@ -383,8 +460,14 @@ export const useAdminPanel = () => {
   const saveProduct$ = $(async () => {
     const supabase = getSupabaseBrowserClient();
 
-    if (!supabase || !productDraft.serviceSlug || !productDraft.name) {
-      feedback.value = "Escolha o servico e informe o nome do artigo.";
+    if (
+      !supabase ||
+      !productDraft.serviceSlug ||
+      !productDraft.structure ||
+      !productDraft.name
+    ) {
+      feedback.value =
+        "Escolha o servico, a estrutura cadastrada e informe o nome do artigo.";
       showToast$("Artigo incompleto", feedback.value);
       return;
     }
@@ -461,6 +544,10 @@ export const useAdminPanel = () => {
       image_url: structureOptionDraft.imageUrl,
       service_slug: structureOptionDraft.serviceSlug,
       sort_order: structureOptionDraft.sortOrder,
+      steps: structureOptionDraft.stepsText
+        .split("\n")
+        .map((step) => step.trim())
+        .filter(Boolean),
       structure: structureOptionDraft.structure,
       structure_cost_percentage: Math.max(
         0,
@@ -484,6 +571,7 @@ export const useAdminPanel = () => {
       structureOptionDraft.imagePreviewUrl = "";
       structureOptionDraft.imageUrl = existingStructure.image_url;
       structureOptionDraft.sortOrder = asNumber(existingStructure.sort_order || 10);
+      structureOptionDraft.stepsText = existingStructure.steps.join("\n");
       structureOptionDraft.structureCostPercentage = asNumber(
         existingStructure.structure_cost_percentage,
       );
@@ -722,6 +810,196 @@ export const useAdminPanel = () => {
     }
   });
 
+  const resetCustomQuoteDraft$ = $(() => {
+    customQuoteDraft.contacto = "";
+    customQuoteDraft.currency = "MZN";
+    customQuoteDraft.customerMode = "registered";
+    customQuoteDraft.customerName = "";
+    customQuoteDraft.items = [];
+    customQuoteDraft.morada = "";
+    customQuoteDraft.notes = "";
+    customQuoteDraft.nuit = "";
+    customQuoteDraft.profileId = "";
+    customQuoteDraft.serviceSlug = "";
+    customQuoteProductPickerOpen.value = false;
+    customQuoteProductSearch.value = "";
+  });
+
+  const selectCustomQuoteCustomer$ = $((profileId: string) => {
+    customQuoteDraft.profileId = profileId;
+
+    const customer = ownerCustomers.value.find((item) => item.id === profileId);
+
+    if (!customer) {
+      customQuoteDraft.customerName = "";
+      customQuoteDraft.contacto = "";
+      customQuoteDraft.morada = "";
+      return;
+    }
+
+    customQuoteDraft.customerName = customer.full_name ?? "";
+    customQuoteDraft.contacto = customer.phone || customer.email || "";
+    customQuoteDraft.morada = customer.city ?? "";
+  });
+
+  const addCustomQuoteProduct$ = $((productId: string) => {
+    const product = ownerProducts.value.find((item) => item.id === productId);
+
+    if (!product) {
+      return;
+    }
+
+    const existing = customQuoteDraft.items.find(
+      (item) => item.id === product.id,
+    );
+
+    if (existing) {
+      existing.quantity = Math.max(1, asNumber(existing.quantity) + 1);
+      return;
+    }
+
+    customQuoteDraft.items = [
+      ...customQuoteDraft.items,
+      {
+        category: product.category || "Produto",
+        id: product.id,
+        imageUrl: product.image_url,
+        name: product.name,
+        quantity: 1,
+        serviceSlug: product.service_slug,
+        structure: product.structure,
+        unit: product.unit || "Un",
+        unitPrice: asNumber(product.unit_price),
+      },
+    ];
+  });
+
+  const updateCustomQuoteItemQuantity$ = $(
+    (productId: string, quantity: number) => {
+      customQuoteDraft.items = customQuoteDraft.items.map((item) =>
+        item.id === productId
+          ? { ...item, quantity: Math.max(1, asNumber(quantity) || 1) }
+          : item,
+      );
+    },
+  );
+
+  const removeCustomQuoteItem$ = $((productId: string) => {
+    customQuoteDraft.items = customQuoteDraft.items.filter(
+      (item) => item.id !== productId,
+    );
+  });
+
+  const saveCustomQuote$ = $(async () => {
+    const supabase = getSupabaseBrowserClient();
+    const customerName = customQuoteDraft.customerName.trim();
+    const contacto = customQuoteDraft.contacto.trim();
+    const items = customQuoteDraft.items.filter((item) => item.quantity > 0);
+
+    if (!supabase) {
+      showToast$(
+        "Base de dados indisponivel",
+        "Nao foi possivel abrir a ligacao com a base de dados.",
+      );
+      return;
+    }
+
+    if (!customerName || !contacto) {
+      showToast$(
+        "Cliente incompleto",
+        "Informe o cliente e pelo menos um contacto para esta cotacao.",
+      );
+      return;
+    }
+
+    if (items.length === 0) {
+      showToast$(
+        "Artigos em falta",
+        "Escolha pelo menos um artigo cadastrado para montar a cotacao.",
+      );
+      return;
+    }
+
+    const subtotal = items.reduce(
+      (sum, item) => sum + asNumber(item.unitPrice) * asNumber(item.quantity),
+      0,
+    );
+    const quoteNumber = `BTL-PER-${Date.now()}`;
+    const customerType =
+      customQuoteDraft.customerMode === "registered"
+        ? "Cliente cadastrado"
+        : "Cliente temporario";
+
+    const quoteResult = await supabase
+      .from("custom_quotes")
+      .insert({
+        created_by: authUser.value?.id ? String(authUser.value.id) : null,
+        currency: "MZN",
+        customer_address: customQuoteDraft.morada.trim(),
+        customer_contact: contacto,
+        customer_name: customerName,
+        customer_nuit: customQuoteDraft.nuit.trim(),
+        customer_type: customerType,
+        notes: customQuoteDraft.notes.trim(),
+        profile_id:
+          customQuoteDraft.customerMode === "registered" &&
+          customQuoteDraft.profileId
+            ? customQuoteDraft.profileId
+            : null,
+        quote_number: quoteNumber,
+        selected_items: items,
+        service_slug: customQuoteDraft.serviceSlug || items[0]?.serviceSlug || null,
+        status: "enviado",
+        subtotal,
+        total: subtotal,
+      })
+      .select("id")
+      .single();
+
+    if (quoteResult.error || !quoteResult.data) {
+      showToast$(
+        "Cotacao nao guardada",
+        "Nao foi possivel criar a cotacao personalizada agora.",
+      );
+      return;
+    }
+
+    const quoteId = quoteResult.data.id as string;
+    const itemsResult = await supabase.from("custom_quote_items").insert(
+      items.map((item) => ({
+        category: item.category || "Produto",
+        custom_quote_id: quoteId,
+        image_url: item.imageUrl,
+        name: item.name,
+        product_id: item.id,
+        quantity: item.quantity,
+        service_slug: item.serviceSlug,
+        structure: item.structure,
+        total: asNumber(item.unitPrice) * asNumber(item.quantity),
+        unit: item.unit || "Un",
+        unit_price: item.unitPrice,
+      })),
+    );
+
+    if (itemsResult.error) {
+      showToast$(
+        "Cotacao parcial",
+        "A cotacao foi criada, mas os artigos nao foram guardados corretamente.",
+      );
+      return;
+    }
+
+    showToast$(
+      "Cotacao personalizada criada",
+      `${quoteNumber} de ${customerName} foi guardada com ${items.length} artigo(s).`,
+    );
+    customQuoteLastCreatedId.value = quoteId;
+    await resetCustomQuoteDraft$();
+    customQuoteFormOpen.value = false;
+    customQuoteTableOpen.value = true;
+    await refreshOwnerContent$();
+  });
+
   const toggleContent$ = $(async (
     table: AdminContentTable,
     id: string,
@@ -754,7 +1032,7 @@ export const useAdminPanel = () => {
   const deleteContent$ = $(async (table: AdminContentTable, id: string) => {
     const supabase = getSupabaseBrowserClient();
 
-    if (!supabase || !window.confirm("Eliminar este item definitivamente?")) {
+    if (!supabase) {
       return;
     }
 
@@ -769,6 +1047,59 @@ export const useAdminPanel = () => {
 
     if (!error) {
       await refreshOwnerContent$();
+    }
+  });
+
+  const requestToggleContent$ = $(
+    (table: AdminContentTable, id: string, active: boolean, label: string) => {
+      confirmTitle.value = active ? "Ativar item" : "Desativar item";
+      confirmMessage.value = active
+        ? `Deseja ativar "${label}" para ficar disponivel no sistema?`
+        : `Deseja desativar "${label}" e ocultar do publico?`;
+      confirmLabel.value = active ? "Ativar" : "Desativar";
+      confirmTone.value = active ? "default" : "danger";
+      confirmAction.active = active;
+      confirmAction.id = id;
+      confirmAction.table = table;
+      confirmAction.type = "toggle";
+      confirmOpen.value = true;
+    },
+  );
+
+  const requestDeleteContent$ = $(
+    (table: AdminContentTable, id: string, label: string) => {
+      confirmTitle.value = "Eliminar item";
+      confirmMessage.value = `Deseja eliminar "${label}" definitivamente? Esta acao nao pode ser desfeita.`;
+      confirmLabel.value = "Eliminar";
+      confirmTone.value = "danger";
+      confirmAction.active = false;
+      confirmAction.id = id;
+      confirmAction.table = table;
+      confirmAction.type = "delete";
+      confirmOpen.value = true;
+    },
+  );
+
+  const confirmPendingAction$ = $(async () => {
+    if (!confirmAction.table || !confirmAction.id) {
+      await closeConfirm$();
+      return;
+    }
+
+    const table = confirmAction.table;
+    const id = confirmAction.id;
+    const active = confirmAction.active;
+    const type = confirmAction.type;
+
+    await closeConfirm$();
+
+    if (type === "toggle") {
+      await toggleContent$(table, id, active);
+      return;
+    }
+
+    if (type === "delete") {
+      await deleteContent$(table, id);
     }
   });
 
@@ -816,6 +1147,7 @@ export const useAdminPanel = () => {
     structureOptionDraft.imageUrl = option.image_url;
     structureOptionDraft.serviceSlug = option.service_slug;
     structureOptionDraft.sortOrder = asNumber(option.sort_order || 10);
+    structureOptionDraft.stepsText = option.steps.join("\n");
     structureOptionDraft.structure = option.structure;
     structureOptionDraft.structureCostPercentage = asNumber(
       option.structure_cost_percentage,
@@ -969,6 +1301,92 @@ export const useAdminPanel = () => {
     }
   });
 
+  const openQuoteProcedure$ = $((quoteId: string) => {
+    const quote = operatorQuotes.value.find((item) => item.id === quoteId);
+    const draft = drafts[quoteId];
+
+    quoteProcedureQuoteId.value = quoteId;
+    quoteProcedureOperatorId.value = quote?.technician_id ?? "";
+    quoteProcedureStepIndex.value = 0;
+
+    if (draft) {
+      draft.status = "Em avaliacao";
+      draft.progress = Math.max(5, draft.progress || 0);
+    }
+
+    quoteProcedureOpen.value = true;
+  });
+
+  const closeQuoteProcedure$ = $(() => {
+    quoteProcedureOpen.value = false;
+    quoteProcedureQuoteId.value = "";
+    quoteProcedureOperatorId.value = "";
+    quoteProcedureStepIndex.value = 0;
+  });
+
+  const saveQuoteProcedure$ = $(async () => {
+    const supabase = getSupabaseBrowserClient();
+    const quote = operatorQuotes.value.find(
+      (item) => item.id === quoteProcedureQuoteId.value,
+    );
+    const draft = quote ? drafts[quote.id] : null;
+    const operator = ownerOperators.value.find(
+      (item) => item.id === quoteProcedureOperatorId.value,
+    );
+
+    if (!supabase || !quote || !draft || !operator) {
+      showToast$(
+        "Procedimento incompleto",
+        "Escolha uma solicitacao e um tecnico operador para proceder.",
+      );
+      return;
+    }
+
+    const structureKey =
+      typeof quote.request_payload?.structureType === "string"
+        ? quote.request_payload.structureType
+        : "";
+    const structure = ownerStructureOptions.value.find(
+      (option) =>
+        option.service_slug === quote.service_slug &&
+        option.structure === structureKey,
+    );
+    const steps = structure?.steps ?? [];
+    const selectedStep =
+      steps[quoteProcedureStepIndex.value] ??
+      (draft.nextStep || "Estudar a area e validar os dados do servico.");
+    const operatorName =
+      operator.full_name || operator.email || operator.phone || "Operador Bitoll";
+
+    const { error } = await supabase
+      .from("quotes")
+      .update({
+        next_step: selectedStep,
+        progress: Math.max(5, draft.progress || 0),
+        status: statusToDatabase("Em avaliacao"),
+        technician: operatorName,
+        technician_id: operator.id,
+        updated_at: new Date().toISOString(),
+        updates: [
+          `Solicitacao recebida e atribuida ao operador ${operatorName}.`,
+          `Passo atual: ${selectedStep}`,
+        ],
+      })
+      .eq("id", quote.id);
+
+    if (!error) {
+      await refreshOperatorQuotes$();
+      closeQuoteProcedure$();
+    }
+
+    showToast$(
+      error ? "Erro ao proceder" : "Solicitacao procedida",
+      error
+        ? "Nao foi possivel guardar o tecnico operador agora."
+        : `A solicitacao foi atribuida a ${operatorName}.`,
+    );
+  });
+
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(async () => {
     authUser.value = getCachedAuthUser();
@@ -1019,6 +1437,9 @@ export const useAdminPanel = () => {
     ownerTemplateItems,
     ownerTemplateRules,
     ownerPromotions,
+    ownerCustomers,
+    ownerCustomQuotes,
+    ownerOperators,
 
     ownerTab,
     ownerSearch,
@@ -1035,6 +1456,10 @@ export const useAdminPanel = () => {
     openProductActionsId,
     openTemplateActionsId,
     openPromotionActionsId,
+    quoteProcedureOpen,
+    quoteProcedureQuoteId,
+    quoteProcedureOperatorId,
+    quoteProcedureStepIndex,
 
     feedback,
 
@@ -1045,10 +1470,19 @@ export const useAdminPanel = () => {
     closeToast$,
 
     detailsOpen,
+    detailsImageUrl,
     detailsTitle,
     detailsMessage,
     showDetails$,
     closeDetails$,
+
+    confirmOpen,
+    confirmTitle,
+    confirmMessage,
+    confirmLabel,
+    confirmTone,
+    closeConfirm$,
+    confirmPendingAction$,
 
     drafts,
 
@@ -1057,6 +1491,12 @@ export const useAdminPanel = () => {
     productDraft,
     templateDraft,
     promotionDraft,
+    customQuoteDraft,
+    customQuoteProductPickerOpen,
+    customQuoteProductSearch,
+    customQuoteFormOpen,
+    customQuoteLastCreatedId,
+    customQuoteTableOpen,
 
     resetServiceDraft$,
     resetStructureOptionDraft$,
@@ -1072,16 +1512,28 @@ export const useAdminPanel = () => {
     saveProduct$,
     saveTemplate$,
     savePromotion$,
+    saveCustomQuote$,
     saveQuoteProgress$,
+    openQuoteProcedure$,
+    closeQuoteProcedure$,
+    saveQuoteProcedure$,
 
     toggleContent$,
     deleteContent$,
+    requestToggleContent$,
+    requestDeleteContent$,
 
     editService$,
     editStructureOption$,
     editProduct$,
     editTemplate$,
     editPromotion$,
+
+    resetCustomQuoteDraft$,
+    selectCustomQuoteCustomer$,
+    addCustomQuoteProduct$,
+    updateCustomQuoteItemQuantity$,
+    removeCustomQuoteItem$,
   };
 };
 

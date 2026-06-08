@@ -21,19 +21,29 @@ export const contrastOptions: AccessibilitySegmentOption<ContrastMode>[] = [
     description: "Mantem as cores originais da Bitoll.",
   },
   {
-    label: "Escuro",
-    value: "dark-high",
-    description: "Fundo escuro com texto mais forte.",
+    label: "Azul",
+    value: "blue",
+    description: "Base azul com secoes escuras e botoes azuis.",
+  },
+  {
+    label: "Verde",
+    value: "green",
+    description: "Base verde com leitura clara e botoes verdes.",
+  },
+  {
+    label: "Vermelho",
+    value: "red",
+    description: "Base vermelha com destaque forte e contraste seguro.",
+  },
+  {
+    label: "Cinzento",
+    value: "gray",
+    description: "Base cinzenta neutra para leitura concentrada.",
   },
   {
     label: "Claro",
-    value: "light-high",
-    description: "Fundo claro com texto escuro.",
-  },
-  {
-    label: "Leitura",
-    value: "reading",
-    description: "Reduz brilho e melhora conforto.",
+    value: "white",
+    description: "Fundo claro com cards brancos e texto escuro.",
   },
 ];
 

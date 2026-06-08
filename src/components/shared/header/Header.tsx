@@ -115,7 +115,7 @@ export default component$(() => {
               role="img"
               aria-label="Bitoll"
               class="h-11 w-11 rounded-2xl bg-cover bg-center shadow-[0_0_25px_rgba(6,182,212,0.20)]"
-              style={{ backgroundImage: "url('/brand/bitoll-mark.svg')" }}
+              style={{ backgroundImage: "url('/brand/bitoll-mark-bg-navy.svg')" }}
             />
 
             <div class="hidden sm:block">

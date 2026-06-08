@@ -18,6 +18,7 @@ import {
   loadServiceQuoteTemplatesFromSupabase,
   loadServiceStructureOptionsFromSupabase,
 } from "~/lib/supabase/platform-data";
+import { formatMoney } from "~/lib/formatters/money";
 
 import type {
   ServiceQuoteTemplateOption,
@@ -41,6 +42,7 @@ export default component$<ServiceProductsModalProps>(
 
     const selectedProductId = useSignal<string | null>(null);
     const selectedQuoteId = useSignal<string | null>(null);
+    const productDisplayMode = useSignal<"table" | "cards" | "compact">("table");
 
     const quoteModal = useSignal(false);
     const quotePreviewModal = useSignal(false);
@@ -116,11 +118,10 @@ export default component$<ServiceProductsModalProps>(
     const selectedProduct = selectedQuote?.products.find(
       (product) => product.id === selectedProductId.value,
     );
-    const formatMoney = (value: number, currency = "MZN") =>
-      `${value.toLocaleString("pt-MZ", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })} ${currency}`;
+    const selectedProductTotal =
+      selectedProduct && typeof selectedProduct.unitPrice === "number"
+        ? selectedProduct.unitPrice * (selectedProduct.estimatedQuantity ?? 1)
+        : null;
     const openQuotePreview = $((quoteId: string) => {
       selectedQuoteId.value = quoteId;
       selectedProductId.value = null;
@@ -175,6 +176,7 @@ export default component$<ServiceProductsModalProps>(
           <button
             type="button"
             aria-label="Fechar"
+            autoFocus
             class="absolute right-5 top-5 z-20 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-800 bg-slate-900/95 text-lg text-slate-300 shadow-xl transition duration-300 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300"
             onClick$={onClose$}
           >
@@ -315,6 +317,7 @@ export default component$<ServiceProductsModalProps>(
               <button
                 type="button"
                 aria-label="Fechar"
+                autoFocus
                 class="absolute right-5 top-5 z-20 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-800 bg-slate-900/95 text-lg text-slate-300 shadow-xl transition duration-300 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300"
                 onClick$={() => {
                   quotePreviewModal.value = false;
@@ -337,7 +340,41 @@ export default component$<ServiceProductsModalProps>(
               </div>
 
               <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <p class="text-sm font-semibold text-slate-300">
+                    Escolha como quer ver os artigos
+                  </p>
+                  <div class="flex rounded-2xl border border-slate-800 bg-slate-900/70 p-1">
+                    {[
+                      { label: "Tabela", value: "table" },
+                      { label: "Cards", value: "cards" },
+                      { label: "Lista", value: "compact" },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        class={[
+                          "rounded-xl px-3 py-2 text-xs font-bold transition duration-300",
+                          productDisplayMode.value === option.value
+                            ? "bg-cyan-400 text-slate-950"
+                            : "text-slate-400 hover:bg-slate-800 hover:text-white",
+                        ]}
+                        onClick$={() => {
+                          productDisplayMode.value = option.value as
+                            | "table"
+                            | "cards"
+                            | "compact";
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <ProductsTable
+                  currency={selectedQuote.currency}
+                  displayMode={productDisplayMode.value}
                   products={selectedQuote.products}
                   selectedProductId={selectedProductId.value ?? undefined}
                   onSelectProduct$={(productId) => {
@@ -416,10 +453,11 @@ export default component$<ServiceProductsModalProps>(
               }}
             />
 
-            <div class="relative z-10 w-full max-w-xl rounded-3xl border border-slate-800 bg-slate-950 p-6 shadow-[0_30px_100px_rgba(15,23,42,0.75)]">
+            <div class="relative z-10 max-h-[90dvh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-800 bg-slate-950 p-6 shadow-[0_30px_100px_rgba(15,23,42,0.75)]">
               <button
                 type="button"
                 aria-label="Fechar"
+                autoFocus
                 class="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full border border-slate-800 bg-slate-900/95 text-lg text-slate-300 transition duration-300 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300"
                 onClick$={() => {
                   selectedProductId.value = null;
@@ -429,24 +467,129 @@ export default component$<ServiceProductsModalProps>(
               </button>
 
               <p class="pr-14 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">
-                Explicacao do produto
+                Detalhes do artigo
               </p>
               <h3 class="mt-2 pr-14 text-xl font-bold text-white">
                 {selectedProduct.name}
               </h3>
 
-              <div class="mt-4 flex flex-wrap gap-2">
-                <span class="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-200">
-                  {selectedProduct.category}
-                </span>
-                <span class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-xs font-semibold text-slate-300">
-                  {selectedProduct.quantity}
-                </span>
+              {selectedProduct.imageUrl ? (
+                <img
+                  src={selectedProduct.imageUrl}
+                  alt={selectedProduct.name}
+                  width={640}
+                  height={360}
+                  class="mt-5 h-72 w-full rounded-2xl border border-slate-800 object-cover"
+                />
+              ) : (
+                <div class="mt-5 flex h-56 w-full items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  Imagem indisponivel
+                </div>
+              )}
+
+              <div class="mt-5 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3">
+                  <span class="block text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-200/80">
+                    Preco unidade
+                  </span>
+                  <span class="mt-1 block text-lg font-bold text-cyan-100">
+                    {typeof selectedProduct.unitPrice === "number"
+                      ? formatMoney(selectedProduct.unitPrice, selectedQuote?.currency)
+                      : "Preco por confirmar"}
+                  </span>
+                </div>
+                <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+                  <span class="block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Quantidade
+                  </span>
+                  <span class="mt-1 block text-sm font-semibold text-slate-200">
+                    {selectedProduct.quantity}
+                  </span>
+                </div>
+                <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+                  <span class="block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Total
+                  </span>
+                  <span class="mt-1 block text-lg font-bold text-white">
+                    {selectedProductTotal !== null
+                      ? formatMoney(selectedProductTotal, selectedQuote?.currency)
+                      : "Total por confirmar"}
+                  </span>
+                </div>
               </div>
 
-              <p class="mt-5 text-sm leading-7 text-slate-300">
-                {selectedProduct.detail || selectedProduct.description}
-              </p>
+              <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3">
+                  <span class="block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Categoria
+                  </span>
+                  <span class="mt-1 block text-sm font-semibold text-slate-200">
+                    {selectedProduct.category}
+                  </span>
+                </div>
+                <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3">
+                  <span class="block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Estado
+                  </span>
+                  <span class="mt-1 block text-sm font-semibold text-slate-200">
+                    {selectedProduct.required ? "Obrigatorio" : "Opcional"}
+                  </span>
+                </div>
+                {selectedProduct.brand && (
+                  <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3">
+                    <span class="block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      Marca
+                    </span>
+                    <span class="mt-1 block text-sm font-semibold text-slate-200">
+                      {selectedProduct.brand}
+                    </span>
+                  </div>
+                )}
+                {selectedProduct.model && (
+                  <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3">
+                    <span class="block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      Modelo
+                    </span>
+                    <span class="mt-1 block text-sm font-semibold text-slate-200">
+                      {selectedProduct.model}
+                    </span>
+                  </div>
+                )}
+                {selectedProduct.system && (
+                  <div class="rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3">
+                    <span class="block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      Sistema
+                    </span>
+                    <span class="mt-1 block text-sm font-semibold text-slate-200">
+                    {selectedProduct.system}
+                  </span>
+                </div>
+                )}
+              </div>
+
+              {(selectedProduct.detail || selectedProduct.description) && (
+                <div class="mt-5 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+                  <span class="block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    Descricao
+                  </span>
+                  <p class="mt-2 text-sm leading-7 text-slate-300">
+                    {selectedProduct.detail || selectedProduct.description}
+                  </p>
+                </div>
+              )}
+
+              {selectedProduct.description &&
+                selectedProduct.detail &&
+                selectedProduct.description !== selectedProduct.detail && (
+                  <div class="mt-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+                    <span class="block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      Observacao
+                    </span>
+                    <p class="mt-2 text-sm leading-7 text-slate-400">
+                      {selectedProduct.description}
+                    </p>
+                  </div>
+              )}
             </div>
           </div>
         )}

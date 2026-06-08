@@ -1,4 +1,5 @@
 export type ProjectStatus =
+  | "Por proceder"
   | "Solicitado"
   | "Em avaliacao"
   | "Em instalacao"
@@ -7,15 +8,29 @@ export type ProjectStatus =
 
 export interface CustomerProject {
   id: string;
+  quoteNumber: string;
   title: string;
   service: string;
   location: string;
   requestedAt: string;
   status: ProjectStatus;
+  currency: string;
+  subtotal: number;
+  discount: number;
+  tax: number;
+  total: number;
+  structureCost: number;
+  structureCostPercentage: number;
   progress: number;
+  progressEnabled?: boolean;
   nextStep: string;
   technician: string;
   estimatedCompletion: string;
   updates: string[];
+  items: {
+    name: string;
+    quantity: number;
+    unit: string;
+    unitPrice: number;
+  }[];
 }
-

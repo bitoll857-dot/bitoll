@@ -1,4 +1,13 @@
-export type ContrastMode = "default" | "dark-high" | "light-high" | "reading";
+export type ContrastMode =
+  | "default"
+  | "blue"
+  | "green"
+  | "red"
+  | "gray"
+  | "white"
+  | "dark-high"
+  | "light-high"
+  | "reading";
 
 export type TextSizeMode = "normal" | "medium" | "large";
 

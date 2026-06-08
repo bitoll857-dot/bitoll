@@ -7,6 +7,7 @@ import AuthModal from "../modal/Auth";
 import ActionToast from "../toast";
 import { getCachedAuthUser } from "~/lib/supabase/client";
 import { loadQuoteTemplateProductsFromSupabase } from "~/lib/supabase/platform-data";
+import { formatMoney } from "~/lib/formatters/money";
 import type { AuthMode } from "~/types/auth";
 import type { ServiceProduct } from "~/types/service-products";
 
@@ -36,9 +37,6 @@ const getPromotionIva = (promotion: Promotion) =>
 
 const getPromotionTotal = (promotion: Promotion) =>
   getPromotionTaxable(promotion) + getPromotionIva(promotion);
-
-const formatMoney = (value: number, currency: string) =>
-  `${value.toLocaleString("pt-MZ")} ${currency}`;
 
 const getQuoteProducts = (promotion: Promotion) =>
   promotion.articles.map((article) => ({

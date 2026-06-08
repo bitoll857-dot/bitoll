@@ -1,6 +1,7 @@
 import { $, component$, useOnWindow, useSignal } from "@builder.io/qwik";
 import AuthModal from "../modal/Auth";
 import Button from "../button/Button";
+import ContactMenu from "~/components/ui/contact/ContactMenu";
 import { getCachedAuthUser } from "~/lib/supabase/client";
 import type { AuthMode } from "~/types/auth";
 
@@ -44,17 +45,20 @@ export default component$(() => {
                 : "Crie sua conta para melhor ter mais acesso do que e a nossa experiencia."}
             </p>
 
-            {authReady.value && !isLoggedIn.value && (
-              <Button
-                variant="secondary"
-                onClick$={() => {
-                  authMode.value = "register";
-                  authModal.value = true;
-                }}
-              >
-                Criar conta
-              </Button>
-            )}
+            <div class="flex flex-wrap justify-center gap-4">
+              {authReady.value && !isLoggedIn.value && (
+                <Button
+                  variant="secondary"
+                  onClick$={() => {
+                    authMode.value = "register";
+                    authModal.value = true;
+                  }}
+                >
+                  Criar conta
+                </Button>
+              )}
+              <ContactMenu />
+            </div>
           </div>
         </div>
 

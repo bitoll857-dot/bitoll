@@ -7,6 +7,7 @@ import {
   getCachedAuthUser,
   getSupabaseBrowserClient,
 } from "~/lib/supabase/client";
+import { formatMoney } from "~/lib/formatters/money";
 import type { ServiceProduct } from "~/types/service-products";
 
 type QuoteRequestFormProps = {
@@ -98,12 +99,6 @@ const smartProjectTypeOptions = [
 
 const IVA_RATE = 0.12;
 
-const formatMoney = (value: number, currency = "MZN") =>
-  `${value.toLocaleString("pt-MZ", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })} ${currency}`;
-
 const formatDisplayDate = (date: Date) =>
   date.toLocaleDateString("pt-MZ", {
     day: "2-digit",
@@ -128,6 +123,7 @@ type ProformaPdfData = {
   rows: ProformaPdfRow[];
   subtotal: string;
   structureCost: string;
+  structureCostLabel: string;
   iva: string;
   discount: string;
   total: string;
@@ -142,84 +138,159 @@ const pdfText = (value: string) =>
     .replace(/\(/g, "\\(")
     .replace(/\)/g, "\\)");
 
-const truncatePdfText = (value: string, maxLength: number) =>
-  value.length > maxLength ? `${value.slice(0, maxLength - 3)}...` : value;
+const wrapPdfText = (value: string, maxLength: number, maxLines = 2) => {
+  const words = value.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
 
-const drawPdfText = (x: number, y: number, size: number, text: string) =>
-  `BT /F1 ${size} Tf ${x} ${y} Td (${pdfText(text)}) Tj ET`;
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+
+    if (candidate.length <= maxLength) {
+      current = candidate;
+      continue;
+    }
+
+    if (current) {
+      lines.push(current);
+    }
+
+    current = word;
+
+    if (lines.length === maxLines - 1) {
+      break;
+    }
+  }
+
+  if (current && lines.length < maxLines) {
+    lines.push(current);
+  }
+
+  const consumed = lines.join(" ").length;
+  const original = value.trim();
+
+  if (original.length > consumed && lines.length > 0) {
+    lines[lines.length - 1] = `${lines[lines.length - 1].slice(0, maxLength - 3)}...`;
+  }
+
+  return lines.length > 0 ? lines : [value.slice(0, maxLength)];
+};
+
+const drawPdfText = (
+  x: number,
+  y: number,
+  size: number,
+  text: string,
+  font = "F1",
+) => `BT /${font} ${size} Tf ${x} ${y} Td (${pdfText(text)}) Tj ET`;
+
+const drawPdfLine = (x1: number, y1: number, x2: number, y2: number) =>
+  `${x1} ${y1} m ${x2} ${y2} l S`;
+
+const drawPdfRect = (x: number, y: number, width: number, height: number) =>
+  `${x} ${y} ${width} ${height} re S`;
 
 const createProformaPdfBlob = (data: ProformaPdfData) => {
-  const rowsPerPage = 24;
+  const rowsPerPage = 12;
   const pages = Math.max(1, Math.ceil(data.rows.length / rowsPerPage));
   const objects: string[] = [];
 
   objects.push("<< /Type /Catalog /Pages 2 0 R >>");
 
-  const pageObjectIds = Array.from({ length: pages }, (_, index) => 4 + index * 2);
+  const pageObjectIds = Array.from({ length: pages }, (_, index) => 5 + index * 2);
   objects.push(
     `<< /Type /Pages /Kids [${pageObjectIds
       .map((id) => `${id} 0 R`)
       .join(" ")}] /Count ${pages} >>`,
   );
   objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
 
   for (let page = 0; page < pages; page += 1) {
-    const pageObjectId = 4 + page * 2;
+    const pageObjectId = 5 + page * 2;
     const contentObjectId = pageObjectId + 1;
     const pageRows = data.rows.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
     const commands: string[] = [
       "0.8 w",
-      "40 785 515 0 l S",
-      drawPdfText(40, 805, 18, "Factura Pro-forma"),
-      drawPdfText(40, 782, 11, `No ${data.number}`),
-      drawPdfText(40, 760, 9, "Cidade de Tete | Cidade de Chimoio"),
-      drawPdfText(40, 746, 9, "E-mail: bitoll857@gmail.com | Cell: 86 613 6316 | NUIT: 151102115"),
-      drawPdfText(360, 805, 9, "Facturacao a:"),
-      drawPdfText(360, 790, 9, data.customerName),
-      drawPdfText(360, 776, 9, `Morada: ${data.customerAddress}`),
-      drawPdfText(360, 762, 9, `Cell: ${data.customerPhone}`),
-      drawPdfText(360, 748, 9, `Emissao: ${data.issueDate}`),
-      drawPdfText(360, 734, 9, `Vencimento: ${data.dueDate}`),
-      "40 710 515 0 l S",
-      drawPdfText(40, 694, 9, "Descricao"),
-      drawPdfText(352, 694, 9, "Qtd."),
-      drawPdfText(415, 694, 9, "Preco Uni."),
-      drawPdfText(505, 694, 9, "Total"),
-      "40 684 515 0 l S",
+      "0.02 0.18 0.36 RG",
+      "0.02 0.18 0.36 rg",
+      drawPdfText(82, 785, 30, "Bitoll", "F2"),
+      "0.07 0.45 0.82 RG",
+      drawPdfLine(40, 782, 62, 782),
+      drawPdfLine(40, 770, 72, 770),
+      drawPdfLine(40, 758, 58, 758),
+      "0.07 0.78 0.91 RG",
+      drawPdfLine(62, 782, 76, 796),
+      drawPdfLine(72, 770, 91, 789),
+      drawPdfLine(58, 758, 80, 780),
+      "0 0 0 RG",
+      "0 0 0 rg",
+      drawPdfText(360, 786, 22, "Factura Pro-forma", "F2"),
+      drawPdfText(458, 762, 12, `No ${data.number}`, "F2"),
+      drawPdfLine(40, 736, 555, 736),
+      drawPdfText(40, 714, 11, "Cidade de Tete"),
+      drawPdfText(40, 700, 11, "Cidade de Chimoio"),
+      drawPdfText(40, 686, 10, "Cell: 86 613 6316"),
+      drawPdfText(40, 672, 10, "NUIT: 151102115"),
+      drawPdfText(346, 714, 11, "Facturacao a:", "F2"),
+      drawPdfText(346, 700, 11, data.customerName),
+      drawPdfText(346, 686, 10, `Morada: ${data.customerAddress}`),
+      drawPdfText(346, 672, 10, `Cell: ${data.customerPhone}`),
+      drawPdfText(40, 646, 10, `Emissao: ${data.issueDate}`, "F2"),
+      drawPdfText(419, 646, 10, `Vencimento: ${data.dueDate}`, "F2"),
+      drawPdfLine(40, 624, 555, 624),
+      drawPdfText(40, 606, 10, "Descricao", "F2"),
+      drawPdfText(358, 606, 10, "Qtd.", "F2"),
+      drawPdfText(407, 606, 10, "Preco Uni.", "F2"),
+      drawPdfText(510, 606, 10, "Total", "F2"),
+      drawPdfLine(40, 596, 555, 596),
     ];
 
-    pageRows.forEach((row, index) => {
-      const y = 664 - index * 22;
+    let y = 574;
+    pageRows.forEach((row) => {
+      const descriptionLines = wrapPdfText(row.description, 48, 2);
+      const rowHeight = Math.max(26, descriptionLines.length * 12 + 10);
+
+      descriptionLines.forEach((line, lineIndex) => {
+        commands.push(drawPdfText(40, y - lineIndex * 12, 9, line));
+      });
       commands.push(
-        drawPdfText(40, y, 8, truncatePdfText(row.description, 58)),
-        drawPdfText(360, y, 8, row.quantity),
-        drawPdfText(415, y, 8, row.unitPrice),
-        drawPdfText(505, y, 8, row.total),
+        drawPdfText(370, y, 9, row.quantity),
+        drawPdfText(416, y, 9, row.unitPrice),
+        drawPdfText(507, y, 9, row.total),
       );
+
+      y -= rowHeight;
     });
 
     if (page === pages - 1) {
+      const discountDisplay = data.discount.startsWith("0") ? "-" : `-${data.discount}`;
+
       commands.push(
-        "360 110 195 0 l S",
-        drawPdfText(365, 92, 9, "Subtotal"),
-        drawPdfText(480, 92, 9, data.subtotal),
-        drawPdfText(365, 76, 9, "Custo estrutura"),
-        drawPdfText(480, 76, 9, data.structureCost),
-        drawPdfText(365, 60, 9, "IVA 12%"),
-        drawPdfText(480, 60, 9, data.iva),
-        drawPdfText(365, 44, 9, "Desconto"),
-        drawPdfText(480, 44, 9, `-${data.discount}`),
-        "360 48 195 0 l S",
-        drawPdfText(365, 24, 11, "Total"),
-        drawPdfText(470, 24, 11, data.total),
+        drawPdfRect(388, 136, 167, 104),
+        drawPdfText(396, 222, 10, "Artigos/base estrutura", "F2"),
+        drawPdfText(480, 222, 10, data.subtotal),
+        drawPdfText(396, 202, 9, data.structureCostLabel, "F2"),
+        drawPdfText(480, 202, 10, data.structureCost),
+        drawPdfText(396, 182, 10, "IVA 12%", "F2"),
+        drawPdfText(480, 182, 10, data.iva),
+        drawPdfText(396, 162, 10, "Desconto", "F2"),
+        drawPdfText(480, 162, 10, discountDisplay),
+        drawPdfLine(388, 156, 555, 156),
+        drawPdfText(396, 142, 12, "Total", "F2"),
+        drawPdfText(480, 142, 12, data.total, "F2"),
+        drawPdfText(40, 102, 8, "Observacao: valores sujeitos a confirmacao tecnica no local."),
+        drawPdfText(40, 88, 8, "Obrigado pela preferencia. Bitoll - seguranca e tecnologia."),
       );
     } else {
-      commands.push(drawPdfText(470, 30, 8, `Pagina ${page + 1}/${pages}`));
+      commands.push(drawPdfText(470, 44, 8, `Pagina ${page + 1}/${pages}`));
     }
+
+    commands.push(drawPdfText(470, 30, 8, `Pagina ${page + 1}/${pages}`));
 
     const stream = commands.join("\n");
     objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentObjectId} 0 R >>`,
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjectId} 0 R >>`,
       `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
     );
   }
@@ -347,6 +418,10 @@ export default component$<QuoteRequestFormProps>(
     const articleSearch = useSignal("");
     const hasWorkImages = useSignal(false);
     const proformaPreview = useSignal(false);
+    const quoteOperationActive = useSignal(false);
+    const quoteOperationTitle = useSignal("");
+    const quoteOperationMessage = useSignal("");
+    const quoteShouldDownloadPdf = useSignal(false);
     const selectedService = useSignal(initialData.service ?? "outro");
     const defaultPerimeter =
       initialData.structureType === "alta"
@@ -423,6 +498,20 @@ export default component$<QuoteRequestFormProps>(
       toastOpen.value = true;
     });
 
+    const showQuoteOperation = $((title: string, message: string) => {
+      quoteOperationTitle.value = title;
+      quoteOperationMessage.value = message;
+      quoteOperationActive.value = true;
+    });
+
+    const hideQuoteOperation = $(() => {
+      setTimeout(() => {
+        quoteOperationActive.value = false;
+        quoteOperationTitle.value = "";
+        quoteOperationMessage.value = "";
+      }, 900);
+    });
+
     const saveQuoteToSupabase = $(async () => {
       const supabase = getSupabaseBrowserClient();
       const authUser = getCachedAuthUser();
@@ -431,7 +520,31 @@ export default component$<QuoteRequestFormProps>(
         return false;
       }
 
-      const quoteNumber = `BTL-${proformaNumber}-${Date.now()}`;
+      const quoteDate = new Date();
+      const quoteProformaNumber = `${String(quoteDate.getMonth() + 1).padStart(
+        2,
+        "0",
+      )}${String(quoteDate.getDate()).padStart(
+        2,
+        "0",
+      )}/${quoteDate.getFullYear()}`;
+      const quoteNumber = `BTL-${quoteProformaNumber}-${Date.now()}`;
+      const quoteCurrency = initialData.currency ?? "MZN";
+      const quoteServiceSubtotal = articles.value.reduce(
+        (sum, article) => sum + getArticleTotal(article),
+        0,
+      );
+      const quoteStructureCostPercentage = Math.max(
+        0,
+        initialData.structureCostPercentage ?? 0,
+      );
+      const quoteStructureCost =
+        quoteServiceSubtotal * (quoteStructureCostPercentage / 100);
+      const quoteSubtotal = quoteServiceSubtotal + quoteStructureCost;
+      const quoteDiscount = initialData.discountAmount ?? 0;
+      const quoteTaxable = Math.max(quoteSubtotal - quoteDiscount, 0);
+      const quoteIva = quoteTaxable * IVA_RATE;
+      const quoteTotal = quoteTaxable + quoteIva;
       const laborTotal = articles.value
         .filter((article) => article.id.includes("labor"))
         .reduce((sum, article) => sum + getArticleTotal(article), 0);
@@ -452,16 +565,16 @@ export default component$<QuoteRequestFormProps>(
             source: initialData.source,
             originLabel: initialData.originLabel,
             structureType: initialData.structureType,
-            structureCostPercentage,
-            structureCost,
+            structureCostPercentage: quoteStructureCostPercentage,
+            structureCost: quoteStructureCost,
             selectedService: selectedService.value,
           },
-          subtotal,
-          discount,
-          tax: iva,
+          subtotal: quoteSubtotal,
+          discount: quoteDiscount,
+          tax: quoteIva,
           labor_total: laborTotal,
-          total,
-          currency,
+          total: quoteTotal,
+          currency: quoteCurrency,
           status: "enviado",
         })
         .select("id")
@@ -535,6 +648,7 @@ export default component$<QuoteRequestFormProps>(
         })),
         subtotal: formatMoney(pdfServiceSubtotal, pdfCurrency),
         structureCost: formatMoney(pdfStructureCost, pdfCurrency),
+        structureCostLabel: `Estrutura (${pdfStructureCostPercentage}%)`,
         iva: formatMoney(pdfIva, pdfCurrency),
         discount: formatMoney(pdfDiscount, pdfCurrency),
         total: formatMoney(pdfTotal, pdfCurrency),
@@ -931,17 +1045,72 @@ export default component$<QuoteRequestFormProps>(
         preventdefault:submit
         class="mt-7 space-y-5"
         onSubmit$={async () => {
-          proformaPreview.value = true;
+          if (quoteOperationActive.value) {
+            return;
+          }
+
+          await showQuoteOperation(
+            "Preparando proforma",
+            "Estamos a organizar os artigos, valores e dados do cliente.",
+          );
+
+          await showQuoteOperation(
+            "Cadastrando pedido",
+            "A guardar a cotacao na base de dados da Bitoll.",
+          );
           const saved = await saveQuoteToSupabase();
+
+          if (saved && quoteShouldDownloadPdf.value) {
+            await showQuoteOperation(
+              "Baixando proforma",
+              "O pedido foi cadastrado. Agora estamos a baixar o PDF.",
+            );
+            await downloadProformaPdf();
+            await showQuoteOperation(
+              "Pedido concluido",
+              "A cotacao foi guardada e a proforma foi baixada.",
+            );
+          } else if (saved) {
+            await showQuoteOperation(
+              "Pedido concluido",
+              "A cotacao foi guardada na base de dados da Bitoll.",
+            );
+          } else {
+            await showQuoteOperation(
+              "Pedido nao cadastrado",
+              "A proforma ficou pronta, mas nao foi possivel guardar na base de dados agora.",
+            );
+          }
 
           showToast(
             saved ? "Pedido enviado" : "Proforma preparada",
             saved
-              ? "A cotacao foi guardada na base de dados da Bitoll e ficou ligada a sua conta."
+              ? quoteShouldDownloadPdf.value
+                ? "A cotacao foi guardada na base de dados da Bitoll e a proforma foi baixada."
+                : "A cotacao foi guardada na base de dados da Bitoll."
               : "A factura pro-forma foi gerada localmente. Nao foi possivel guardar na base de dados da Bitoll agora.",
           );
+          await hideQuoteOperation();
         }}
       >
+        {quoteOperationActive.value && (
+          <div
+            role="status"
+            aria-live="polite"
+            class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/75 px-4 backdrop-blur-sm"
+          >
+            <div class="w-full max-w-sm rounded-3xl border border-cyan-300/30 bg-slate-950 p-5 text-center shadow-2xl shadow-cyan-950/40">
+              <div class="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-cyan-300/20 border-t-cyan-300" />
+              <h3 class="mt-4 text-lg font-black text-white">
+                {quoteOperationTitle.value}
+              </h3>
+              <p class="mt-2 text-sm leading-6 text-slate-300">
+                {quoteOperationMessage.value}
+              </p>
+            </div>
+          </div>
+        )}
+
         <div class="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
           Necessidades vindas de:{" "}
           <span class="font-bold">
@@ -1825,7 +1994,8 @@ export default component$<QuoteRequestFormProps>(
             </div>
             <div class="flex items-center justify-between gap-4">
               <span class="text-slate-400">
-                Custo da estrutura ({structureCostPercentage}%)
+                Estrutura ({structureCostPercentage}% de{" "}
+                {formatMoney(serviceSubtotal, currency)})
               </span>
               <span class="font-semibold text-amber-200">
                 {formatMoney(structureCost, currency)}
@@ -1939,7 +2109,10 @@ export default component$<QuoteRequestFormProps>(
                 </span>
               </div>
               <div class="flex justify-between">
-                <span>Custo da estrutura ({structureCostPercentage}%)</span>
+                <span>
+                  Estrutura ({structureCostPercentage}% de{" "}
+                  {formatMoney(serviceSubtotal, currency)})
+                </span>
                 <span class="font-semibold">
                   {formatMoney(structureCost, currency)}
                 </span>
@@ -2013,31 +2186,35 @@ export default component$<QuoteRequestFormProps>(
           pedido de orcamento.
         </label>
 
-        <Button
-          type="button"
-          variant="secondary"
-          fullWidth
-          spacing="none"
-          buttonClass="flex h-12 items-center justify-center rounded-2xl text-sm font-bold"
-          onClick$={() => {
-            proformaPreview.value = true;
-            showToast(
-              "Proforma preparada",
-              "A factura pro-forma foi gerada para revisao antes do envio.",
-            );
-          }}
-        >
-          Ver proforma antes de enviar
-        </Button>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <Button
+            type="submit"
+            fullWidth
+            spacing="none"
+            buttonClass="flex h-12 items-center justify-center rounded-2xl text-sm font-bold"
+            disabled={quoteOperationActive.value}
+            onClick$={() => {
+              quoteShouldDownloadPdf.value = false;
+            }}
+          >
+            {quoteOperationActive.value ? "A processar pedido" : "Enviar"}
+          </Button>
 
-        <Button
-          type="submit"
-          fullWidth
-          spacing="none"
-          buttonClass="flex h-12 items-center justify-center rounded-2xl text-sm font-bold"
-        >
-          Enviar pedido
-        </Button>
+          <Button
+            type="submit"
+            fullWidth
+            spacing="none"
+            buttonClass="flex h-12 items-center justify-center rounded-2xl text-sm font-bold"
+            disabled={quoteOperationActive.value}
+            onClick$={() => {
+              quoteShouldDownloadPdf.value = true;
+            }}
+          >
+            {quoteOperationActive.value
+              ? "A processar pedido"
+              : "Enviar e baixar PDF"}
+          </Button>
+        </div>
 
         <ActionToast
           isOpen={toastOpen.value}

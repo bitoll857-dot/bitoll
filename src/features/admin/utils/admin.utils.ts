@@ -4,6 +4,7 @@ export const maxImageSizeMb = 0.3;
 export const maxImageSizeBytes = maxImageSizeMb * 1024 * 1024;
 
 export const operatorStatuses: ProjectStatus[] = [
+  "Por proceder",
   "Em avaliacao",
   "Em instalacao",
   "Em testes",
@@ -22,6 +23,7 @@ export const statusToDatabase = (status: ProjectStatus) =>
     "Em avaliacao": "em_avaliacao",
     "Em instalacao": "em_instalacao",
     "Em testes": "em_testes",
+    "Por proceder": "enviado",
     Solicitado: "enviado",
   })[status];
 
@@ -32,10 +34,10 @@ export const databaseToStatus = (status: string): ProjectStatus => {
     em_avaliacao: "Em avaliacao",
     em_instalacao: "Em instalacao",
     em_testes: "Em testes",
-    enviado: "Em avaliacao",
+    enviado: "Por proceder",
   };
 
-  return statusMap[status.toLowerCase()] ?? "Em avaliacao";
+  return statusMap[status.toLowerCase()] ?? "Por proceder";
 };
 
 export const asNumber = (value: number | string | null | undefined) =>

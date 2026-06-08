@@ -6,7 +6,6 @@ import {
   maxImageSizeBytes,
   maxImageSizeMb,
   asNumber,
-  quoteTemplateStructures,
   toSlug,
 } from "../utils/admin.utils";
 
@@ -27,14 +26,12 @@ const structureChoicesForService = (
   admin: AdminPanelState,
   serviceSlug: string,
 ) => {
-  const options = admin.ownerStructureOptions.value
+  return admin.ownerStructureOptions.value
     .filter((option) => option.service_slug === serviceSlug)
     .map((option) => ({
       label: option.title,
       value: option.structure,
     }));
-
-  return options.length > 0 ? options : quoteTemplateStructures;
 };
 
 export const ServiceForm = component$<Props>(({ admin }) => {
@@ -360,6 +357,26 @@ export const StructureOptionForm = component$<Props>(({ admin }) => {
         </span>
       </label>
 
+      <label class="block">
+        <span class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+          Passos do procedimento
+        </span>
+        <textarea
+          value={admin.structureOptionDraft.stepsText}
+          placeholder={"Passo 1: Estudar a area\nPasso 2: Confirmar materiais\nPasso 3: Executar instalacao"}
+          class="mt-2 min-h-32 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-white outline-none"
+          onInput$={(event) => {
+            admin.structureOptionDraft.stepsText = (
+              event.target as HTMLTextAreaElement
+            ).value;
+          }}
+        />
+        <span class="mt-2 block text-xs leading-5 text-slate-500">
+          Escreva um passo por linha. Estes passos aparecem ao proceder uma
+          solicitacao desta estrutura.
+        </span>
+      </label>
+
       <label class="flex items-center gap-2 text-sm text-slate-300">
         <input
           checked={admin.structureOptionDraft.active}
@@ -401,6 +418,7 @@ export const ProductForm = component$<Props>(({ admin }) => {
     admin,
     admin.productDraft.serviceSlug,
   );
+  const hasService = Boolean(admin.productDraft.serviceSlug);
 
   return (
     <form preventdefault:submit class="space-y-3">
@@ -421,7 +439,7 @@ export const ProductForm = component$<Props>(({ admin }) => {
             structureChoicesForService(
               admin,
               admin.productDraft.serviceSlug,
-            )[0]?.value ?? "basica";
+            )[0]?.value ?? "";
         }}
       >
         <option value="">Escolha o servico</option>
@@ -472,12 +490,20 @@ export const ProductForm = component$<Props>(({ admin }) => {
       <select
         value={admin.productDraft.structure}
         class="h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-white outline-none"
+        disabled={!hasService || structureChoices.length === 0}
         onChange$={(event) => {
           admin.productDraft.structure = (
             event.target as HTMLSelectElement
           ).value;
         }}
       >
+        <option value="">
+          {!hasService
+            ? "Escolha primeiro o servico"
+            : structureChoices.length === 0
+              ? "Sem estrutura cadastrada para este servico"
+              : "Escolha a estrutura"}
+        </option>
         {structureChoices.map((structure) => (
           <option key={structure.value} value={structure.value}>
             {structure.label}
@@ -638,6 +664,13 @@ export const TemplateForm = component$<Props>(({ admin }) => {
                 admin,
                 admin.templateDraft.serviceSlug,
               )[0]?.value ?? "basica";
+            admin.templateDraft.structureCostPercentage = Number(
+              admin.ownerStructureOptions.value.find(
+                (option) =>
+                  option.service_slug === admin.templateDraft.serviceSlug &&
+                  option.structure === admin.templateDraft.structure,
+              )?.structure_cost_percentage ?? 0,
+            );
             admin.templateDraft.selectedProductIds = [];
             admin.templateDraft.editableProductIds = [];
             admin.templateDraft.laborProductId = "";
@@ -661,6 +694,13 @@ export const TemplateForm = component$<Props>(({ admin }) => {
           class="mt-2 h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-white outline-none"
           onChange$={(event) => {
             admin.templateDraft.structure = (event.target as HTMLSelectElement).value;
+            admin.templateDraft.structureCostPercentage = Number(
+              admin.ownerStructureOptions.value.find(
+                (option) =>
+                  option.service_slug === admin.templateDraft.serviceSlug &&
+                  option.structure === admin.templateDraft.structure,
+              )?.structure_cost_percentage ?? 0,
+            );
           }}
         >
           {structureChoices.map((structure) => (

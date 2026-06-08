@@ -19,6 +19,7 @@ import type {
 } from "~/types/service-products";
 
 import { getCachedAuthUser, getSupabaseBrowserClient } from "./client";
+import { formatMoney } from "~/lib/formatters/money";
 
 type ServiceRow = {
   slug: string;
@@ -105,6 +106,7 @@ type QuoteTemplateItemRow = {
   name: string;
   product_id: string | null;
   quantity_field_key: string;
+  required: boolean;
   template_id: string;
   unit: string;
   unit_price: number | string;
@@ -130,6 +132,9 @@ type QuoteRow = {
   quote_number: string;
   service_slug: string | null;
   status: string;
+  subtotal: number | string;
+  discount: number | string;
+  tax: number | string;
   total: number | string;
   currency: string;
   created_at: string;
@@ -139,6 +144,12 @@ type QuoteRow = {
   technician: string | null;
   estimated_completion: string | null;
   updates: unknown;
+  quote_items?: {
+    name: string;
+    quantity: number | string;
+    unit: string;
+    unit_price: number | string;
+  }[];
 };
 
 const serviceImages: Record<string, Component> = {
@@ -152,6 +163,11 @@ const asStringArray = (value: unknown) =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
 const asNumber = (value: number | string | null | undefined) => Number(value ?? 0);
+
+const LEGACY_DEFAULT_PROGRESS = 35;
+const LEGACY_DEFAULT_NEXT_STEP =
+  "A equipa Bitoll deve validar o pedido e contactar o cliente.";
+const LEGACY_DEFAULT_TECHNICIAN = "Consultoria tecnica Bitoll";
 
 const isFormulaOperator = (
   value: string,
@@ -228,6 +244,7 @@ const mapStructureOption = (row: StructureOptionRow): ServiceStructureOption => 
 const mapTemplateItem = (
   row: QuoteTemplateItemRow,
   template: QuoteTemplateRow,
+  sourceProduct?: ProductRow,
   rules: QuoteTemplateRuleRow[] = [],
 ): ServiceProduct => ({
   id: row.product_id ?? row.id,
@@ -236,14 +253,17 @@ const mapTemplateItem = (
   estimatedQuantity: Math.max(1, Math.floor(asNumber(row.default_quantity) || 1)),
   defaultQuantity: Math.max(1, Math.floor(asNumber(row.default_quantity) || 1)),
   unitPrice: asNumber(row.unit_price),
-  brand: "Bitoll",
-  model: template.structure,
-  system: template.title,
-  category: "Produto",
-  description: template.title,
-  detail: row.client_quantity_editable
-    ? "Quantidade editavel pelo cliente."
-    : "Quantidade definida pela Bitoll.",
+  brand: sourceProduct?.brand || undefined,
+  model: sourceProduct?.model || undefined,
+  system: sourceProduct?.system || undefined,
+  category: sourceProduct?.category || sourceProduct?.system || "Produto",
+  description: sourceProduct?.description || template.title,
+  detail:
+    sourceProduct?.detail ||
+    (row.client_quantity_editable
+      ? "Quantidade editavel pelo cliente."
+      : "Quantidade definida pela Bitoll."),
+  imageUrl: sourceProduct?.image_url || undefined,
   clientQuantityEditable: row.client_quantity_editable,
   dependencyRules: rules
     .filter((rule) => rule.source_product_id === row.product_id)
@@ -276,8 +296,32 @@ const mapTemplateItem = (
       targetProductId: rule.target_product_id ?? "",
     }))
     .filter((rule) => rule.targetProductId),
-  required: true,
+  required: sourceProduct?.required ?? row.required ?? true,
 });
+
+const loadTemplateSourceProductsMap = async (
+  productIds: string[],
+): Promise<Map<string, ProductRow>> => {
+  const supabase = getSupabaseBrowserClient();
+  const uniqueProductIds = Array.from(new Set(productIds.filter(Boolean)));
+
+  if (!supabase || uniqueProductIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase
+    .from("service_products")
+    .select(
+      "id,service_slug,structure,name,unit,quantity_label,estimated_quantity,unit_price,brand,model,system,category,description,detail,image_url,required",
+    )
+    .in("id", uniqueProductIds);
+
+  if (error || !data) {
+    return new Map();
+  }
+
+  return new Map((data as ProductRow[]).map((product) => [product.id, product]));
+};
 
 export const loadServicesFromSupabase = async () => {
   const supabase = getSupabaseBrowserClient();
@@ -371,7 +415,7 @@ export const loadServiceProductsFromSupabase = async (
   if (template) {
     const { data: items, error: itemsError } = await supabase
       .from("service_quote_template_items")
-      .select("id,template_id,product_id,name,unit,unit_price,quantity_field_key,client_quantity_editable,default_quantity")
+      .select("id,template_id,product_id,name,unit,unit_price,quantity_field_key,client_quantity_editable,default_quantity,required")
       .eq("template_id", template.id)
       .order("sort_order", { ascending: true });
 
@@ -380,8 +424,17 @@ export const loadServiceProductsFromSupabase = async (
         .from("service_quote_template_item_rules")
         .select("source_product_id,target_product_id,multiplier,divisor,formula_steps,min_quantity,rounding")
         .eq("template_id", template.id);
-      const products = (items as QuoteTemplateItemRow[]).map((item) =>
-        mapTemplateItem(item, template, (rules ?? []) as QuoteTemplateRuleRow[]),
+      const templateItems = items as QuoteTemplateItemRow[];
+      const sourceProducts = await loadTemplateSourceProductsMap(
+        templateItems.flatMap((item) => (item.product_id ? [item.product_id] : [])),
+      );
+      const products = templateItems.map((item) =>
+        mapTemplateItem(
+          item,
+          template,
+          item.product_id ? sourceProducts.get(item.product_id) : undefined,
+          (rules ?? []) as QuoteTemplateRuleRow[],
+        ),
       );
 
       if (template.labor_unit_price && template.labor_product_id) {
@@ -397,7 +450,6 @@ export const loadServiceProductsFromSupabase = async (
           quantity: `${laborQuantity} servico(s)`,
           estimatedQuantity: laborQuantity,
           unitPrice: asNumber(template.labor_unit_price),
-          brand: "Bitoll",
           model: template.structure,
           system: "Instalacao",
           category: "Mao de obra",
@@ -437,7 +489,7 @@ export const loadQuoteTemplateProductsFromSupabase = async (
   const template = templateData as QuoteTemplateRow;
   const { data: items, error: itemsError } = await supabase
     .from("service_quote_template_items")
-    .select("id,template_id,product_id,name,unit,unit_price,quantity_field_key,client_quantity_editable,default_quantity")
+    .select("id,template_id,product_id,name,unit,unit_price,quantity_field_key,client_quantity_editable,default_quantity,required")
     .eq("template_id", template.id)
     .order("sort_order", { ascending: true });
 
@@ -450,8 +502,17 @@ export const loadQuoteTemplateProductsFromSupabase = async (
     .select("source_product_id,target_product_id,multiplier,divisor,formula_steps,min_quantity,rounding")
     .eq("template_id", template.id);
 
-  const products = (items as QuoteTemplateItemRow[]).map((item) =>
-    mapTemplateItem(item, template, (rules ?? []) as QuoteTemplateRuleRow[]),
+  const templateItems = items as QuoteTemplateItemRow[];
+  const sourceProducts = await loadTemplateSourceProductsMap(
+    templateItems.flatMap((item) => (item.product_id ? [item.product_id] : [])),
+  );
+  const products = templateItems.map((item) =>
+    mapTemplateItem(
+      item,
+      template,
+      item.product_id ? sourceProducts.get(item.product_id) : undefined,
+      (rules ?? []) as QuoteTemplateRuleRow[],
+    ),
   );
 
   if (template.labor_unit_price && template.labor_product_id) {
@@ -467,7 +528,6 @@ export const loadQuoteTemplateProductsFromSupabase = async (
       quantity: `${laborQuantity} servico(s)`,
       estimatedQuantity: laborQuantity,
       unitPrice: asNumber(template.labor_unit_price),
-      brand: "Bitoll",
       model: template.structure,
       system: "Instalacao",
       category: "Mao de obra",
@@ -573,7 +633,7 @@ export const loadCustomerProjectsFromSupabase = async (): Promise<CustomerProjec
   const { data, error } = await supabase
     .from("quotes")
     .select(
-      "id,quote_number,service_slug,status,total,currency,created_at,request_payload,progress,next_step,technician,estimated_completion,updates",
+      "id,quote_number,service_slug,status,subtotal,discount,tax,total,currency,created_at,request_payload,progress,next_step,technician,estimated_completion,updates,quote_items(name,quantity,unit,unit_price)",
     )
     .eq("profile_id", String(user.id))
     .order("created_at", { ascending: false });
@@ -595,32 +655,76 @@ export const loadCustomerProjectsFromSupabase = async (): Promise<CustomerProjec
       statusMap[quote.status.toLowerCase()] ??
       (quote.status === "Concluido" ? "Concluido" : "Em avaliacao");
     const createdAt = quote.created_at.slice(0, 10);
-    const progress = Math.min(100, Math.max(0, asNumber(quote.progress ?? 35)));
     const updates = asStringArray(quote.updates);
+    const nextStep = quote.next_step?.trim() ?? "";
+    const technician = quote.technician?.trim() ?? "";
+    const hasCustomNextStep =
+      Boolean(nextStep) && nextStep !== LEGACY_DEFAULT_NEXT_STEP;
+    const hasCustomTechnician =
+      Boolean(technician) && technician !== LEGACY_DEFAULT_TECHNICIAN;
+    const numericProgress = asNumber(quote.progress);
+    const hasCustomProgress =
+      quote.progress !== null && numericProgress !== LEGACY_DEFAULT_PROGRESS;
+    const progressEnabled = Boolean(
+      hasCustomProgress ||
+        hasCustomNextStep ||
+        hasCustomTechnician ||
+        quote.estimated_completion ||
+        updates.length > 0,
+    );
+    const progress = progressEnabled
+      ? Math.min(100, Math.max(0, numericProgress))
+      : 0;
+    const requestPayload = quote.request_payload ?? {};
+    const structureCost = asNumber(requestPayload.structureCost as
+      | number
+      | string
+      | null
+      | undefined);
+    const structureCostPercentage = asNumber(
+      requestPayload.structureCostPercentage as number | string | null | undefined,
+    );
 
     return {
       id: quote.id,
+      quoteNumber: quote.quote_number,
       title: `Cotacao ${quote.quote_number}`,
       service:
-        typeof quote.request_payload?.selectedService === "string"
-          ? quote.request_payload.selectedService
+        typeof requestPayload.selectedService === "string"
+          ? requestPayload.selectedService
           : quote.service_slug || "Servico Bitoll",
       location: user.city || "A confirmar",
       requestedAt: createdAt,
       status,
+      currency: quote.currency,
+      subtotal: asNumber(quote.subtotal),
+      discount: asNumber(quote.discount),
+      tax: asNumber(quote.tax),
+      total: asNumber(quote.total),
+      structureCost,
+      structureCostPercentage,
+      progressEnabled,
       progress: status === "Concluido" ? 100 : progress,
       nextStep:
-        quote.next_step ||
-        "A equipa Bitoll deve validar o pedido e contactar o cliente.",
-      technician: quote.technician || "Consultoria tecnica Bitoll",
+        (hasCustomNextStep ? nextStep : "") ||
+        "A cotacao ainda esta em processo de validacao pela equipa Bitoll.",
+      technician: (hasCustomTechnician ? technician : "") || "Equipa Bitoll",
       estimatedCompletion: quote.estimated_completion ?? createdAt,
       updates:
-        updates.length > 0
+        progressEnabled && updates.length > 0
           ? updates
-          : [
-              `Total registado: ${asNumber(quote.total).toLocaleString("pt-MZ")} ${quote.currency}`,
-              "Pedido guardado na base de dados da Bitoll.",
-            ],
+          : progressEnabled
+            ? [
+                `Total registado: ${formatMoney(asNumber(quote.total), quote.currency)}`,
+                "Pedido guardado na base de dados da Bitoll.",
+              ]
+            : [],
+      items: (quote.quote_items ?? []).map((item) => ({
+        name: item.name,
+        quantity: asNumber(item.quantity),
+        unit: item.unit,
+        unitPrice: asNumber(item.unit_price),
+      })),
     };
   });
 };

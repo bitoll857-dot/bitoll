@@ -14,6 +14,7 @@ import {
   loadServiceProductCatalogsFromSupabase,
   loadServicesFromSupabase,
 } from "~/lib/supabase/platform-data";
+import { formatMoney } from "~/lib/formatters/money";
 import type { CustomerProject } from "~/types/customer-project";
 import type { Promotion } from "~/types/promotion";
 import type { ServiceProductCatalog } from "~/types/service-products";
@@ -52,11 +53,141 @@ const normalizeText = (value: string) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
-const formatMoney = (value: number, currency = "MZN") =>
-  `${value.toLocaleString("pt-MZ", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })} ${currency}`;
+const pdfText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
+
+const drawPdfText = (
+  x: number,
+  y: number,
+  size: number,
+  text: string,
+  font = "F1",
+) => `BT /${font} ${size} Tf ${x} ${y} Td (${pdfText(text)}) Tj ET`;
+
+const drawPdfLine = (x1: number, y1: number, x2: number, y2: number) =>
+  `${x1} ${y1} m ${x2} ${y2} l S`;
+
+const createQuotePdfBlob = (project: CustomerProject) => {
+  const rowsPerPage = 14;
+  const rows = project.items.length > 0
+    ? project.items
+    : [
+        {
+          name: project.service,
+          quantity: 1,
+          unit: "Servico",
+          unitPrice: project.total,
+        },
+      ];
+  const pages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+  const objects: string[] = [];
+  const pageIds = Array.from({ length: pages }, (_, index) => 5 + index * 2);
+
+  objects.push("<< /Type /Catalog /Pages 2 0 R >>");
+  objects.push(
+    `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pages} >>`,
+  );
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
+
+  for (let page = 0; page < pages; page += 1) {
+    const pageRows = rows.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+    const pageObjectId = 5 + page * 2;
+    const contentObjectId = pageObjectId + 1;
+    const commands = [
+      "0.8 w",
+      "0.02 0.18 0.36 RG",
+      "0.02 0.18 0.36 rg",
+      drawPdfText(82, 785, 30, "Bitoll", "F2"),
+      "0.07 0.45 0.82 RG",
+      drawPdfLine(40, 782, 62, 782),
+      drawPdfLine(40, 770, 72, 770),
+      drawPdfLine(40, 758, 58, 758),
+      "0 0 0 RG",
+      "0 0 0 rg",
+      drawPdfText(360, 786, 22, "Factura Pro-forma", "F2"),
+      drawPdfText(398, 762, 11, `No ${project.quoteNumber}`, "F2"),
+      drawPdfLine(40, 736, 555, 736),
+      drawPdfText(40, 714, 10, "Bitoll - seguranca e tecnologia", "F2"),
+      drawPdfText(40, 700, 10, "Cidade de Tete / Cidade de Chimoio"),
+      drawPdfText(40, 686, 10, "Cell: +258 84 000 0000"),
+      drawPdfText(340, 714, 10, "Facturacao a", "F2"),
+      drawPdfText(340, 700, 10, project.title),
+      drawPdfText(340, 686, 10, project.location),
+      drawPdfText(40, 646, 10, `Emissao: ${formatDate(project.requestedAt)}`),
+      drawPdfText(340, 646, 10, `Servico: ${project.service}`),
+      drawPdfLine(40, 620, 555, 620),
+      drawPdfText(48, 604, 10, "Descricao", "F2"),
+      drawPdfText(358, 604, 10, "Qtd.", "F2"),
+      drawPdfText(416, 604, 10, "Preco Uni.", "F2"),
+      drawPdfText(512, 604, 10, "Total", "F2"),
+      drawPdfLine(40, 596, 555, 596),
+    ];
+    let y = 574;
+
+    pageRows.forEach((item) => {
+      const quantity = Math.max(1, item.quantity);
+      const total = quantity * item.unitPrice;
+      const description =
+        item.name.length > 52 ? `${item.name.slice(0, 49)}...` : item.name;
+
+      commands.push(
+        drawPdfText(48, y, 9, description),
+        drawPdfText(362, y, 9, String(quantity)),
+        drawPdfText(410, y, 9, formatMoney(item.unitPrice, project.currency)),
+        drawPdfText(500, y, 9, formatMoney(total, project.currency)),
+      );
+      y -= 28;
+    });
+
+    if (page === pages - 1) {
+      const baseWithoutStructure = Math.max(0, project.subtotal - project.structureCost);
+      commands.push(
+        drawPdfLine(388, 238, 555, 238),
+        drawPdfText(396, 222, 10, "Artigos/base estrutura", "F2"),
+        drawPdfText(480, 222, 10, formatMoney(baseWithoutStructure, project.currency)),
+        drawPdfText(396, 202, 10, `Estrutura (${project.structureCostPercentage}%)`, "F2"),
+        drawPdfText(480, 202, 10, formatMoney(project.structureCost, project.currency)),
+        drawPdfText(396, 182, 10, "IVA", "F2"),
+        drawPdfText(480, 182, 10, formatMoney(project.tax, project.currency)),
+        drawPdfText(396, 162, 10, "Desconto", "F2"),
+        drawPdfText(480, 162, 10, `-${formatMoney(project.discount, project.currency)}`),
+        drawPdfLine(388, 156, 555, 156),
+        drawPdfText(396, 142, 12, "Total", "F2"),
+        drawPdfText(480, 142, 12, formatMoney(project.total, project.currency), "F2"),
+      );
+    }
+
+    commands.push(drawPdfText(470, 30, 8, `Pagina ${page + 1}/${pages}`));
+
+    const stream = commands.join("\n");
+    objects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjectId} 0 R >>`,
+      `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+    );
+  }
+
+  let pdf = "%PDF-1.4\n";
+  const offsets: number[] = [];
+  objects.forEach((object, index) => {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  offsets.forEach((offset) => {
+    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  });
+  pdf += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+  return new Blob([pdf], { type: "application/pdf" });
+};
 
 const getPromotionTotal = (promotion: Promotion) => {
   const subtotal =
@@ -162,7 +293,9 @@ const getGbsReply = (
       .slice(0, 3)
       .map(
         (project) =>
-          `- ${project.title}: ${project.status}, ${project.progress}% concluido. Proximo passo: ${project.nextStep}`,
+          project.progressEnabled
+            ? `- ${project.title}: ${project.status}, ${project.progress}% concluido. Proximo passo: ${project.nextStep}`
+            : `- ${project.title}: cotacao ainda em processo de validacao pela equipa Bitoll.`,
       )
       .join("\n");
 
@@ -296,6 +429,19 @@ const ActionIcon = component$<{ mode: PanelMode }>(({ mode }) => {
 });
 
 const ProjectCard = component$<{ project: CustomerProject }>(({ project }) => {
+  const progressEnabled = project.progressEnabled ?? true;
+  const downloadQuotePdf = $(() => {
+    const pdfBlob = createQuotePdfBlob(project);
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `bitoll-cotacao-${project.quoteNumber.replace(/[^\w-]+/g, "-")}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  });
+
   return (
     <article class="rounded-3xl border border-slate-800 bg-slate-900/60 p-5">
       <div class="flex flex-wrap items-start justify-between gap-4">
@@ -316,56 +462,88 @@ const ProjectCard = component$<{ project: CustomerProject }>(({ project }) => {
         </span>
       </div>
 
-      <div class="mt-5">
-        <div class="flex items-center justify-between text-xs font-semibold text-slate-500">
-          <span>Progresso</span>
-          <span>{project.progress}%</span>
+      <div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+            Valor da cotacao
+          </p>
+          <p class="mt-1 text-lg font-black text-white">
+            {formatMoney(project.total, project.currency)}
+          </p>
         </div>
-        <div class="mt-2 h-3 overflow-hidden rounded-full bg-slate-800">
-          <div
-            class="h-full rounded-full bg-cyan-400"
-            style={{ width: `${project.progress}%` }}
-          />
-        </div>
+
+        <Button
+          type="button"
+          spacing="none"
+          buttonClass="rounded-xl px-4 py-3 text-sm font-bold"
+          onClick$={downloadQuotePdf}
+        >
+          Baixar PDF
+        </Button>
       </div>
 
-      <div class="mt-5 grid gap-4 md:grid-cols-3">
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs uppercase tracking-[0.14em] text-slate-500">
-            Proximo passo
-          </p>
-          <p class="mt-2 text-sm leading-6 text-slate-300">
-            {project.nextStep}
-          </p>
+      {!progressEnabled ? (
+        <div class="mt-5 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">
+          A cotacao ainda esta em processo de validacao pela equipa Bitoll. Os
+          paineis de andamento serao ligados quando o admin preencher o estado,
+          responsavel, previsao e proximos passos.
         </div>
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs uppercase tracking-[0.14em] text-slate-500">
-            Responsavel
-          </p>
-          <p class="mt-2 text-sm leading-6 text-slate-300">
-            {project.technician}
-          </p>
-        </div>
-        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <p class="text-xs uppercase tracking-[0.14em] text-slate-500">
-            Previsao
-          </p>
-          <p class="mt-2 text-sm leading-6 text-slate-300">
-            {formatDate(project.estimatedCompletion)}
-          </p>
-        </div>
-      </div>
+      ) : (
+        <>
+          <div class="mt-5">
+            <div class="flex items-center justify-between text-xs font-semibold text-slate-500">
+              <span>Progresso</span>
+              <span>{project.progress}%</span>
+            </div>
+            <div class="mt-2 h-3 overflow-hidden rounded-full bg-slate-800">
+              <div
+                class="h-full rounded-full bg-cyan-400"
+                style={{ width: `${project.progress}%` }}
+              />
+            </div>
+          </div>
 
-      <div class="mt-5 flex flex-wrap gap-2">
-        {project.updates.map((update) => (
-          <span
-            key={update}
-            class="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-xs text-slate-300"
-          >
-            {update}
-          </span>
-        ))}
-      </div>
+          <div class="mt-5 grid gap-4 md:grid-cols-3">
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <p class="text-xs uppercase tracking-[0.14em] text-slate-500">
+                Proximo passo
+              </p>
+              <p class="mt-2 text-sm leading-6 text-slate-300">
+                {project.nextStep}
+              </p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <p class="text-xs uppercase tracking-[0.14em] text-slate-500">
+                Responsavel
+              </p>
+              <p class="mt-2 text-sm leading-6 text-slate-300">
+                {project.technician}
+              </p>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <p class="text-xs uppercase tracking-[0.14em] text-slate-500">
+                Previsao
+              </p>
+              <p class="mt-2 text-sm leading-6 text-slate-300">
+                {formatDate(project.estimatedCompletion)}
+              </p>
+            </div>
+          </div>
+
+          {project.updates.length > 0 && (
+            <div class="mt-5 flex flex-wrap gap-2">
+              {project.updates.map((update) => (
+                <span
+                  key={update}
+                  class="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-xs text-slate-300"
+                >
+                  {update}
+                </span>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </article>
   );
 });
@@ -397,7 +575,15 @@ export default component$(() => {
   });
 
   // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(async () => {
+  useVisibleTask$(async ({ track }) => {
+    track(() => panelMode.value);
+    track(() => isAuthenticated.value);
+    track(() => authUser.value?.id);
+
+    if (!panelMode.value || !isAuthenticated.value || !authUser.value) {
+      return;
+    }
+
     const [dbProjects, dbPromotions, dbServices, dbCatalogs] =
       await Promise.all([
         loadCustomerProjectsFromSupabase(),

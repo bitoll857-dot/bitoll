@@ -27,6 +27,7 @@ interface ButtonProps {
   onClick$?: QRL<() => Promise<void> | void>;
   type?: "button" | "submit" | "reset";
   ariaLabel?: string;
+  disabled?: boolean;
   wrapperClass?: string;
   buttonClass?: string;
   spacing?: "normal" | "none";
@@ -41,6 +42,7 @@ export default component$<ButtonProps>(
     onClick$,
     type = "button",
     ariaLabel,
+    disabled = false,
     wrapperClass,
     buttonClass,
     spacing = "normal",
@@ -81,9 +83,11 @@ export default component$<ButtonProps>(
         <button
           type={type}
           aria-label={ariaLabel}
+          disabled={disabled}
           onClick$={onClick$}
           class={[
             "rounded-xl font-semibold transition duration-300",
+            disabled && "cursor-not-allowed opacity-60",
 
             spacing === "normal" &&
               "my-6",

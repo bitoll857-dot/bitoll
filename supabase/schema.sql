@@ -105,6 +105,7 @@ create table if not exists public.service_structure_options (
   title text not null,
   description text not null default '',
   image_url text not null default '',
+  steps jsonb not null default '[]'::jsonb,
   sort_order integer not null default 0,
   structure_cost_percentage numeric not null default 0,
   active boolean not null default true,
@@ -222,9 +223,10 @@ create table if not exists public.quotes (
   total numeric not null default 0,
   currency text not null default 'MZN',
   status text not null default 'rascunho',
-  progress numeric not null default 35,
-  next_step text not null default 'A equipa Bitoll deve validar o pedido e contactar o cliente.',
-  technician text not null default 'Consultoria tecnica Bitoll',
+  progress numeric,
+  next_step text not null default '',
+  technician text not null default '',
+  technician_id uuid references public.profiles(id) on delete set null,
   estimated_completion date,
   updates jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
@@ -239,6 +241,43 @@ create table if not exists public.quote_items (
   quantity numeric not null default 1,
   unit_price numeric not null default 0,
   locked boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.custom_quotes (
+  id uuid primary key default gen_random_uuid(),
+  quote_number text not null unique,
+  profile_id uuid references public.profiles(id) on delete set null,
+  customer_name text not null default '',
+  customer_contact text not null default '',
+  customer_address text not null default '',
+  customer_nuit text not null default '',
+  customer_type text not null default 'Cliente temporario',
+  service_slug text references public.services(slug) on delete set null,
+  subtotal numeric not null default 0,
+  total numeric not null default 0,
+  currency text not null default 'MZN',
+  status text not null default 'rascunho',
+  notes text not null default '',
+  selected_items jsonb not null default '[]'::jsonb,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.custom_quote_items (
+  id uuid primary key default gen_random_uuid(),
+  custom_quote_id uuid not null references public.custom_quotes(id) on delete cascade,
+  product_id uuid references public.service_products(id) on delete set null,
+  name text not null,
+  category text not null default 'Produto',
+  service_slug text,
+  structure text not null default '',
+  unit text not null default 'Un',
+  quantity numeric not null default 1,
+  unit_price numeric not null default 0,
+  total numeric not null default 0,
+  image_url text not null default '',
   created_at timestamptz not null default now()
 );
 
@@ -298,6 +337,8 @@ alter table public.promotions enable row level security;
 alter table public.projects enable row level security;
 alter table public.quotes enable row level security;
 alter table public.quote_items enable row level security;
+alter table public.custom_quotes enable row level security;
+alter table public.custom_quote_items enable row level security;
 alter table public.chat_threads enable row level security;
 alter table public.chat_messages enable row level security;
 
@@ -368,6 +409,7 @@ alter table public.service_products add column if not exists active boolean not 
 alter table public.service_structure_options add column if not exists title text not null default '';
 alter table public.service_structure_options add column if not exists description text not null default '';
 alter table public.service_structure_options add column if not exists image_url text not null default '';
+alter table public.service_structure_options add column if not exists steps jsonb not null default '[]'::jsonb;
 alter table public.service_structure_options add column if not exists sort_order integer not null default 0;
 alter table public.service_structure_options add column if not exists structure_cost_percentage numeric not null default 0;
 alter table public.service_structure_options add column if not exists active boolean not null default true;
@@ -398,11 +440,16 @@ alter table public.promotions add column if not exists technologies jsonb not nu
 alter table public.promotions add column if not exists features jsonb not null default '[]'::jsonb;
 alter table public.promotions add column if not exists articles jsonb not null default '[]'::jsonb;
 
-alter table public.quotes add column if not exists progress numeric not null default 35;
-alter table public.quotes add column if not exists next_step text not null default 'A equipa Bitoll deve validar o pedido e contactar o cliente.';
-alter table public.quotes add column if not exists technician text not null default 'Consultoria tecnica Bitoll';
+alter table public.quotes add column if not exists progress numeric;
+alter table public.quotes add column if not exists next_step text not null default '';
+alter table public.quotes add column if not exists technician text not null default '';
+alter table public.quotes add column if not exists technician_id uuid references public.profiles(id) on delete set null;
 alter table public.quotes add column if not exists estimated_completion date;
 alter table public.quotes add column if not exists updates jsonb not null default '[]'::jsonb;
+alter table public.quotes alter column progress drop not null;
+alter table public.quotes alter column progress drop default;
+alter table public.quotes alter column next_step set default '';
+alter table public.quotes alter column technician set default '';
 
 insert into storage.buckets (id, name, public)
 values ('bitoll-images', 'bitoll-images', true)
@@ -510,13 +557,7 @@ using (
 drop policy if exists "Account members are visible to members" on public.account_members;
 create policy "Account members are visible to members"
 on public.account_members for select
-using (
-  exists (
-    select 1 from public.account_members viewer
-    where viewer.account_id = account_members.account_id
-      and viewer.user_id = auth.uid()
-  )
-);
+using (public.is_admin() or user_id = auth.uid());
 
 drop policy if exists "Admins can view themselves" on public.admin_users;
 create policy "Admins can view themselves"
@@ -887,6 +928,18 @@ with check (
       and quotes.profile_id = auth.uid()
   )
 );
+
+drop policy if exists "Admins can manage custom quotes" on public.custom_quotes;
+create policy "Admins can manage custom quotes"
+on public.custom_quotes for all
+using (public.is_admin())
+with check (public.is_admin());
+
+drop policy if exists "Admins can manage custom quote items" on public.custom_quote_items;
+create policy "Admins can manage custom quote items"
+on public.custom_quote_items for all
+using (public.is_admin())
+with check (public.is_admin());
 
 drop policy if exists "Chat threads are visible to owners" on public.chat_threads;
 create policy "Chat threads are visible to owners"

@@ -16,7 +16,7 @@ export default component$<AuthModalProps>(
     const isLogin = mode === "login";
 
     return (
-      <div class="fixed inset-0 z-[300] flex min-h-dvh items-center justify-center p-4">
+      <div class="fixed inset-0 z-[800] flex min-h-dvh items-center justify-center p-4">
         <button
           type="button"
           aria-label="Fechar autenticacao"
@@ -28,6 +28,7 @@ export default component$<AuthModalProps>(
           <button
             type="button"
             aria-label="Fechar"
+            autoFocus
             class="absolute right-5 top-5 z-20 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-800 bg-slate-900/95 text-lg text-slate-300 shadow-xl transition duration-300 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-cyan-300"
             onClick$={onClose$}
           >

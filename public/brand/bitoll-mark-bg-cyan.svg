@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 180" role="img" aria-label="Bitoll">
+  <rect width="220" height="180" rx="32" fill="#E0F7FA"/>
+  <defs>
+    <linearGradient id="mark-b-cyan" x1="55" x2="168" y1="20" y2="158" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#052E5D"/>
+      <stop offset=".49" stop-color="#052E5D"/>
+      <stop offset=".5" stop-color="#0369A1"/>
+      <stop offset="1" stop-color="#075985"/>
+    </linearGradient>
+  </defs>
+  <text x="44" y="154" fill="url(#mark-b-cyan)" font-family="Arial Black, Montserrat, Arial, sans-serif" font-size="168" font-weight="900">B</text>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="10">
+    <path stroke="#052E5D" d="M12 71h53l30-30h42"/>
+    <path stroke="#0891B2" d="M12 94h70l44-44"/>
+    <path stroke="#0369A1" d="M12 118h85l44-44"/>
+    <circle cx="12" cy="71" r="10" fill="#E0F7FA" stroke="#052E5D"/>
+    <circle cx="12" cy="94" r="10" fill="#E0F7FA" stroke="#0891B2"/>
+    <circle cx="12" cy="118" r="10" fill="#E0F7FA" stroke="#0369A1"/>
+  </g>
+</svg>

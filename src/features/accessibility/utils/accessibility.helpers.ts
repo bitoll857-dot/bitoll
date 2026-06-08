@@ -11,6 +11,11 @@ export const accessibilityStorageKey = "bitoll_accessibility_preferences";
 
 const contrastModes: ContrastMode[] = [
   "default",
+  "blue",
+  "green",
+  "red",
+  "gray",
+  "white",
   "dark-high",
   "light-high",
   "reading",

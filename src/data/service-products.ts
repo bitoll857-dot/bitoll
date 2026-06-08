@@ -43,7 +43,7 @@ const product = (
   quantity: `${quantity} ${quantity === 1 ? "unidade" : "unidades"}`,
   estimatedQuantity: quantity,
   unitPrice,
-  brand: options.brand ?? "Bitoll",
+  brand: options.brand,
   model: options.model ?? "Padrao",
   system: options.system ?? category,
   category,
