@@ -1,4 +1,4 @@
-import { component$, useSignal } from "@builder.io/qwik";
+import { $, component$, useSignal } from "@builder.io/qwik";
 
 import type { AdminPanelState } from "../hooks/useAdminPanel";
 import type { OwnerTab } from "../types/admin.types";
@@ -612,9 +612,9 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
     : 0;
   const serviceAreaModalLabel =
     tabs.find((tab) => tab.value === serviceAreaModal.value)?.label ?? "";
-  const openServiceAreaModal = (tab: OwnerTab) => {
+  const openServiceAreaModal = $((tab: OwnerTab) => {
     serviceAreaModal.value = tab;
-  };
+  });
 
   return (
     <>
@@ -2533,78 +2533,6 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
                     const items = admin.ownerTemplateItems.value.filter(
                       (item) => item.template_id === template.id,
                     );
-                    const laborProduct = template.labor_product_id
-                      ? admin.ownerProducts.value.find(
-                          (product) =>
-                            product.id === template.labor_product_id,
-                        )
-                      : null;
-                    const matchingStructure =
-                      admin.ownerStructureOptions.value.find(
-                        (option) =>
-                          option.service_slug === template.service_slug &&
-                          option.structure === template.structure,
-                      );
-                    const structurePercentage =
-                      asNumber(template.structure_cost_percentage) ||
-                      asNumber(
-                        matchingStructure?.structure_cost_percentage ?? 0,
-                      );
-                    const firstProductImage =
-                      items
-                        .map((item) =>
-                          admin.ownerProducts.value.find(
-                            (product) => product.id === item.product_id,
-                          ),
-                        )
-                        .find((product) => product?.image_url)?.image_url ?? "";
-                    const normalItems = items.filter(
-                      (item) => item.product_id !== template.labor_product_id,
-                    );
-                    const laborItems = items.filter(
-                      (item) => item.product_id === template.labor_product_id,
-                    );
-                    const orderedItems = [...normalItems, ...laborItems];
-                    const itemsSubtotal = orderedItems.reduce(
-                      (total, item) =>
-                        total +
-                        asNumber(item.default_quantity) *
-                          asNumber(item.unit_price),
-                      0,
-                    );
-                    const fallbackLaborTotal =
-                      laborItems.length > 0
-                        ? 0
-                        : asNumber(template.labor_unit_price);
-                    const laborTotal =
-                      laborItems.reduce(
-                        (total, item) =>
-                          total +
-                          asNumber(item.default_quantity) *
-                            asNumber(item.unit_price),
-                        0,
-                      ) + fallbackLaborTotal;
-                    const priceWithoutPercentage =
-                      itemsSubtotal + fallbackLaborTotal;
-                    const priceWithoutLabor = Math.max(
-                      0,
-                      priceWithoutPercentage - laborTotal,
-                    );
-                    const quotePrice =
-                      priceWithoutPercentage *
-                      (1 + structurePercentage / 100);
-                    const itemLines =
-                      orderedItems
-                        .map((item, index) => {
-                          const quantity = asNumber(item.default_quantity);
-                          const unitPrice = asNumber(item.unit_price);
-                          const total = quantity * unitPrice;
-                          const isLabor =
-                            item.product_id === template.labor_product_id;
-
-                          return `${index + 1}. ${isLabor ? "Mao de obra - " : ""}${item.name} | Qtd: ${quantity.toLocaleString("pt-MZ")} ${item.unit || "un"} | Total: ${formatMoney(total, template.currency)}`;
-                        })
-                        .join("\n") || "Sem artigos preparados";
 
                     return (
                       <tr key={template.id} class={tableRowClass}>
