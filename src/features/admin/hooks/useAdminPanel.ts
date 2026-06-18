@@ -13,6 +13,7 @@ import {
 
 import {
   getCachedAuthUser,
+  markLocalAuthSession,
   getSupabaseBrowserClient,
 } from "~/lib/supabase/client";
 
@@ -29,6 +30,8 @@ import {
   asNumber,
   asStringArray,
   databaseToStatus,
+  getStructureEstimatedDays,
+  normalizeStructureSteps,
   statusToDatabase,
   toSlug,
 } from "../utils/admin.utils";
@@ -38,14 +41,17 @@ import type {
   AdminCustomQuote,
   AdminMetric,
   AdminOperatorUser,
+  AdminProcedureStep,
   AdminProduct,
   AdminPromotion,
   AdminQuoteTemplate,
   AdminService,
+  AdminStructureStep,
   AdminStructureOption,
   AdminTemplateField,
   AdminTemplateItem,
   AdminTemplateRule,
+  AdminUserProfile,
   CustomQuoteDraftItem,
   OperatorDraft,
   OperatorQuote,
@@ -66,6 +72,50 @@ type AdminContentTable =
 
 type AdminConfirmAction = "toggle" | "delete" | "";
 
+const normalizeProcedureSteps = (value: unknown): AdminProcedureStep[] =>
+  Array.isArray(value)
+    ? value
+        .map((item) => {
+          if (typeof item === "string") {
+            return { checked: false, day: 1, label: item.trim() };
+          }
+
+          if (!item || typeof item !== "object") {
+            return null;
+          }
+
+          const record = item as Record<string, unknown>;
+          const label =
+            typeof record.label === "string"
+              ? record.label
+              : typeof record.text === "string"
+                ? record.text
+                : "";
+
+          return {
+            checked: Boolean(record.checked),
+            day: Math.max(
+              1,
+              Math.ceil(
+                typeof record.day === "number" || typeof record.day === "string"
+                  ? asNumber(record.day)
+                  : 1,
+              ),
+            ),
+            label: label.trim(),
+          };
+        })
+        .filter((step): step is AdminProcedureStep => Boolean(step?.label))
+    : [];
+
+const getDateAfterDays = (startDate: string, days: number) => {
+  const date = startDate ? new Date(`${startDate}T00:00:00`) : new Date();
+
+  date.setDate(date.getDate() + Math.max(1, Math.ceil(days)));
+
+  return date.toISOString().slice(0, 10);
+};
+
 export const useAdminPanel = () => {
   const authUser = useSignal<User | null>(null);
   const adminAccess = useSignal<AdminAccess>(emptyAccess);
@@ -84,6 +134,7 @@ export const useAdminPanel = () => {
   const ownerPromotions = useSignal<AdminPromotion[]>([]);
   const ownerCustomers = useSignal<AdminCustomer[]>([]);
   const ownerCustomQuotes = useSignal<AdminCustomQuote[]>([]);
+  const ownerAdminUsers = useSignal<AdminUserProfile[]>([]);
   const ownerOperators = useSignal<AdminOperatorUser[]>([]);
 
   const ownerTab = useSignal<OwnerTab>("services");
@@ -104,7 +155,23 @@ export const useAdminPanel = () => {
   const quoteProcedureOpen = useSignal(false);
   const quoteProcedureQuoteId = useSignal("");
   const quoteProcedureOperatorId = useSignal("");
-  const quoteProcedureStepIndex = useSignal(0);
+  const quoteProcedureStartDate = useSignal("");
+  const quoteProcedurePaymentType = useSignal<"" | "proforma" | "labor">("");
+  const quoteProcedurePaymentAmount = useSignal(0);
+  const quoteProcedurePaymentMethod = useSignal<"" | "cash" | "account">("");
+  const quoteProcedurePaymentOriginType = useSignal<
+    "" | "BIM" | "BCI" | "E-Mola" | "M-Pesa"
+  >("");
+  const quoteProcedurePaymentOriginNumber = useSignal("");
+  const quoteProcedurePaymentDestinationType = useSignal<
+    "" | "BIM" | "BCI" | "E-Mola" | "M-Pesa"
+  >("");
+  const quoteProcedurePaymentDestinationNumber = useSignal("");
+  const quoteProcedureReceiptNumber = useSignal("");
+  const quoteProcedureReceiptUrl = useSignal("");
+  const quoteProcedureSteps = useStore({
+    items: [] as AdminProcedureStep[],
+  });
 
   const feedback = useSignal("");
 
@@ -149,6 +216,7 @@ export const useAdminPanel = () => {
     imagePreviewUrl: "",
     imageUrl: "",
     name: "",
+    shortName: "",
     serviceSlug: "",
     structure: "basica",
     unitPrice: 0,
@@ -162,7 +230,7 @@ export const useAdminPanel = () => {
     imageUrl: "",
     serviceSlug: "",
     sortOrder: 10,
-    stepsText: "",
+    steps: [] as AdminStructureStep[],
     structure: "basica",
     structureCostPercentage: 0,
     title: "",
@@ -212,20 +280,27 @@ export const useAdminPanel = () => {
 
   const customQuoteProductPickerOpen = useSignal(false);
   const customQuoteProductSearch = useSignal("");
+  const editingCustomQuoteId = useSignal("");
   const customQuoteFormOpen = useSignal(false);
   const customQuoteLastCreatedId = useSignal("");
   const customQuoteTableOpen = useSignal(false);
   const customQuoteDraft = useStore({
+    commitmentTerms: "",
     contacto: "",
     currency: "MZN",
     customerMode: "registered" as "registered" | "temporary",
     customerName: "",
+    executionBaseItemId: "",
+    executionDescription: "Instalacao, configuracao e testes",
+    executionUnitPrice: 0,
     items: [] as CustomQuoteDraftItem[],
     morada: "",
     notes: "",
     nuit: "",
     profileId: "",
     serviceSlug: "",
+    sourceTemplateId: "",
+    structure: "",
   });
 
   const closeToast$ = $(() => {
@@ -294,6 +369,7 @@ export const useAdminPanel = () => {
     productDraft.imagePreviewUrl = "";
     productDraft.imageUrl = "";
     productDraft.name = "";
+    productDraft.shortName = "";
     productDraft.structure = "basica";
     productDraft.unitPrice = 0;
   });
@@ -307,7 +383,7 @@ export const useAdminPanel = () => {
     structureOptionDraft.imagePreviewUrl = "";
     structureOptionDraft.imageUrl = "";
     structureOptionDraft.sortOrder = 10;
-    structureOptionDraft.stepsText = "";
+    structureOptionDraft.steps = [];
     structureOptionDraft.structure = "basica";
     structureOptionDraft.structureCostPercentage = 0;
     structureOptionDraft.title = "";
@@ -373,6 +449,7 @@ export const useAdminPanel = () => {
     ownerPromotions.value = content.promotions;
     ownerCustomers.value = content.customers;
     ownerCustomQuotes.value = content.customQuotes;
+    ownerAdminUsers.value = content.adminUsers;
     ownerOperators.value = content.operators;
 
     if (!productDraft.serviceSlug && content.services[0]) {
@@ -488,6 +565,7 @@ export const useAdminPanel = () => {
       image_url: productDraft.imageUrl,
       name: productDraft.name,
       quantity_label: "",
+      short_name: productDraft.shortName.trim(),
       service_slug: productDraft.serviceSlug,
       source: "Bitoll admin",
       structure: productDraft.structure,
@@ -544,10 +622,7 @@ export const useAdminPanel = () => {
       image_url: structureOptionDraft.imageUrl,
       service_slug: structureOptionDraft.serviceSlug,
       sort_order: structureOptionDraft.sortOrder,
-      steps: structureOptionDraft.stepsText
-        .split("\n")
-        .map((step) => step.trim())
-        .filter(Boolean),
+      steps: normalizeStructureSteps(structureOptionDraft.steps),
       structure: structureOptionDraft.structure,
       structure_cost_percentage: Math.max(
         0,
@@ -571,7 +646,7 @@ export const useAdminPanel = () => {
       structureOptionDraft.imagePreviewUrl = "";
       structureOptionDraft.imageUrl = existingStructure.image_url;
       structureOptionDraft.sortOrder = asNumber(existingStructure.sort_order || 10);
-      structureOptionDraft.stepsText = existingStructure.steps.join("\n");
+      structureOptionDraft.steps = normalizeStructureSteps(existingStructure.steps);
       structureOptionDraft.structureCostPercentage = asNumber(
         existingStructure.structure_cost_percentage,
       );
@@ -811,16 +886,23 @@ export const useAdminPanel = () => {
   });
 
   const resetCustomQuoteDraft$ = $(() => {
+    editingCustomQuoteId.value = "";
+    customQuoteDraft.commitmentTerms = "";
     customQuoteDraft.contacto = "";
     customQuoteDraft.currency = "MZN";
     customQuoteDraft.customerMode = "registered";
     customQuoteDraft.customerName = "";
+    customQuoteDraft.executionBaseItemId = "";
+    customQuoteDraft.executionDescription = "Instalacao, configuracao e testes";
+    customQuoteDraft.executionUnitPrice = 0;
     customQuoteDraft.items = [];
     customQuoteDraft.morada = "";
     customQuoteDraft.notes = "";
     customQuoteDraft.nuit = "";
     customQuoteDraft.profileId = "";
     customQuoteDraft.serviceSlug = "";
+    customQuoteDraft.sourceTemplateId = "";
+    customQuoteDraft.structure = "";
     customQuoteProductPickerOpen.value = false;
     customQuoteProductSearch.value = "";
   });
@@ -865,7 +947,9 @@ export const useAdminPanel = () => {
         id: product.id,
         imageUrl: product.image_url,
         name: product.name,
+        productId: product.id,
         quantity: 1,
+        shortName: product.short_name || "",
         serviceSlug: product.service_slug,
         structure: product.structure,
         unit: product.unit || "Un",
@@ -888,13 +972,146 @@ export const useAdminPanel = () => {
     customQuoteDraft.items = customQuoteDraft.items.filter(
       (item) => item.id !== productId,
     );
+
+    if (customQuoteDraft.executionBaseItemId === productId) {
+      customQuoteDraft.executionBaseItemId = "";
+    }
+  });
+
+  const applyCustomQuoteTemplate$ = $((templateId: string) => {
+    customQuoteDraft.sourceTemplateId = templateId;
+
+    const template = ownerTemplates.value.find((item) => item.id === templateId);
+
+    if (!template) {
+      customQuoteDraft.items = [];
+      return;
+    }
+
+    const templateItems = ownerTemplateItems.value.filter(
+      (item) => item.template_id === template.id,
+    );
+    const items = templateItems.map((templateItem) => {
+      const product = templateItem.product_id
+        ? ownerProducts.value.find((item) => item.id === templateItem.product_id)
+        : null;
+
+      return {
+        category: product?.category || "Produto",
+        id: product?.id || templateItem.id,
+        imageUrl: product?.image_url || "",
+        name: product?.name || templateItem.name,
+        productId: product?.id ?? null,
+        quantity: Math.max(1, asNumber(templateItem.default_quantity) || 1),
+        shortName: product?.short_name || "",
+        serviceSlug: product?.service_slug || template.service_slug,
+        structure: product?.structure || template.structure,
+        unit: product?.unit || templateItem.unit || "Un",
+        unitPrice: asNumber(product?.unit_price ?? templateItem.unit_price),
+      };
+    });
+
+    for (const rule of ownerTemplateRules.value.filter(
+      (item) => item.template_id === template.id,
+    )) {
+      if (!rule.source_product_id || !rule.target_product_id) {
+        continue;
+      }
+
+      const source = items.find((item) => item.productId === rule.source_product_id);
+      const targetIndex = items.findIndex(
+        (item) => item.productId === rule.target_product_id,
+      );
+
+      if (!source || targetIndex < 0) {
+        continue;
+      }
+
+      const formulaSteps = Array.isArray(rule.formula_steps)
+        ? rule.formula_steps
+        : [];
+      const baseSteps =
+        formulaSteps.length > 0
+          ? formulaSteps
+          : [
+              { operator: "multiply", value: asNumber(rule.multiplier) || 1 },
+              { operator: "divide", value: Math.max(1, asNumber(rule.divisor) || 1) },
+            ];
+      const calculated = baseSteps.reduce((total, step) => {
+        const value = asNumber(step.value);
+
+        if (step.operator === "add") {
+          return total + value;
+        }
+
+        if (step.operator === "subtract") {
+          return total - value;
+        }
+
+        if (step.operator === "divide") {
+          return value ? total / value : total;
+        }
+
+        return total * value;
+      }, asNumber(source.quantity));
+      const rounded =
+        rule.rounding === "floor"
+          ? Math.floor(calculated)
+          : rule.rounding === "round"
+            ? Math.round(calculated)
+            : Math.ceil(calculated);
+
+      items[targetIndex] = {
+        ...items[targetIndex],
+        quantity: Math.max(asNumber(rule.min_quantity) || 1, rounded),
+      };
+    }
+
+    customQuoteDraft.serviceSlug = template.service_slug;
+    customQuoteDraft.structure = template.structure;
+    customQuoteDraft.currency = template.currency || "MZN";
+    customQuoteDraft.executionBaseItemId = template.labor_product_id || "";
+    customQuoteDraft.executionDescription = "Instalacao, configuracao e testes";
+    customQuoteDraft.executionUnitPrice = asNumber(template.labor_unit_price);
+    customQuoteDraft.items = items;
+    customQuoteDraft.notes = template.notes
+      ? `${template.title}\n${template.notes}`.trim()
+      : template.title;
   });
 
   const saveCustomQuote$ = $(async () => {
     const supabase = getSupabaseBrowserClient();
     const customerName = customQuoteDraft.customerName.trim();
     const contacto = customQuoteDraft.contacto.trim();
-    const items = customQuoteDraft.items.filter((item) => item.quantity > 0);
+    const productItems = customQuoteDraft.items.filter(
+      (item) => item.quantity > 0,
+    );
+    const executionBaseItem = productItems.find(
+      (item) => item.id === customQuoteDraft.executionBaseItemId,
+    );
+    const executionUnitPrice = asNumber(customQuoteDraft.executionUnitPrice);
+    const executionItem =
+      executionBaseItem && executionUnitPrice > 0
+        ? {
+            category: "Servico",
+            id: `execution-${executionBaseItem.id}`,
+            imageUrl: "",
+            linkedBaseItemId: executionBaseItem.id,
+            name:
+              customQuoteDraft.executionDescription.trim() ||
+              "Instalacao, configuracao e testes",
+            productId: null,
+            quantity: Math.max(1, asNumber(executionBaseItem.quantity) || 1),
+            serviceSlug:
+              customQuoteDraft.serviceSlug || executionBaseItem.serviceSlug,
+            structure: executionBaseItem.structure,
+            unit: executionBaseItem.unit || "Un",
+            unitPrice: executionUnitPrice,
+          }
+        : null;
+    const items = executionItem
+      ? [...productItems, executionItem]
+      : productItems;
 
     if (!supabase) {
       showToast$(
@@ -912,7 +1129,7 @@ export const useAdminPanel = () => {
       return;
     }
 
-    if (items.length === 0) {
+    if (productItems.length === 0) {
       showToast$(
         "Artigos em falta",
         "Escolha pelo menos um artigo cadastrado para montar a cotacao.",
@@ -929,49 +1146,96 @@ export const useAdminPanel = () => {
       customQuoteDraft.customerMode === "registered"
         ? "Cliente cadastrado"
         : "Cliente temporario";
+    const quotePayload = {
+      commitment_terms: customQuoteDraft.commitmentTerms.trim(),
+      currency: customQuoteDraft.currency || "MZN",
+      customer_address: customQuoteDraft.morada.trim(),
+      customer_contact: contacto,
+      customer_name: customerName,
+      customer_nuit: customQuoteDraft.nuit.trim(),
+      customer_type: customerType,
+      notes: customQuoteDraft.notes.trim(),
+      profile_id:
+        customQuoteDraft.customerMode === "registered" &&
+        customQuoteDraft.profileId
+          ? customQuoteDraft.profileId
+          : null,
+      selected_items: items,
+      service_slug: customQuoteDraft.serviceSlug || items[0]?.serviceSlug || null,
+      source_quote_template_id: customQuoteDraft.sourceTemplateId || null,
+      status: "em_processamento",
+      structure:
+        customQuoteDraft.structure ||
+        items.find((item) => item.structure)?.structure ||
+        null,
+      subtotal,
+      total: subtotal,
+      updated_at: new Date().toISOString(),
+    };
 
-    const quoteResult = await supabase
-      .from("custom_quotes")
-      .insert({
-        created_by: authUser.value?.id ? String(authUser.value.id) : null,
-        currency: "MZN",
-        customer_address: customQuoteDraft.morada.trim(),
-        customer_contact: contacto,
-        customer_name: customerName,
-        customer_nuit: customQuoteDraft.nuit.trim(),
-        customer_type: customerType,
-        notes: customQuoteDraft.notes.trim(),
-        profile_id:
-          customQuoteDraft.customerMode === "registered" &&
-          customQuoteDraft.profileId
-            ? customQuoteDraft.profileId
-            : null,
-        quote_number: quoteNumber,
-        selected_items: items,
-        service_slug: customQuoteDraft.serviceSlug || items[0]?.serviceSlug || null,
-        status: "enviado",
-        subtotal,
-        total: subtotal,
-      })
-      .select("id")
-      .single();
+    const quoteResult = editingCustomQuoteId.value
+      ? await supabase
+          .from("custom_quotes")
+          .update(quotePayload)
+          .eq("id", editingCustomQuoteId.value)
+          .select("id,quote_number")
+          .single()
+      : await supabase
+          .from("custom_quotes")
+          .insert({
+            ...quotePayload,
+            created_by: authUser.value?.id ? String(authUser.value.id) : null,
+            quote_number: quoteNumber,
+          })
+          .select("id,quote_number")
+          .single();
 
     if (quoteResult.error || !quoteResult.data) {
+      const message =
+        quoteResult.error?.message ||
+        "Nao foi possivel criar a cotacao personalizada agora.";
+
+      console.error("Erro ao criar cotacao personalizada", quoteResult.error);
       showToast$(
         "Cotacao nao guardada",
-        "Nao foi possivel criar a cotacao personalizada agora.",
+        message,
       );
       return;
     }
 
     const quoteId = quoteResult.data.id as string;
+    const savedQuoteNumber =
+      typeof quoteResult.data.quote_number === "string"
+        ? quoteResult.data.quote_number
+        : quoteNumber;
+
+    if (editingCustomQuoteId.value) {
+      const deleteItemsResult = await supabase
+        .from("custom_quote_items")
+        .delete()
+        .eq("custom_quote_id", quoteId);
+
+      if (deleteItemsResult.error) {
+        console.error(
+          "Erro ao substituir artigos da cotacao personalizada",
+          deleteItemsResult.error,
+        );
+        showToast$(
+          "Cotacao nao atualizada",
+          deleteItemsResult.error.message ||
+            "Nao foi possivel preparar os artigos para atualizar a cotacao.",
+        );
+        return;
+      }
+    }
+
     const itemsResult = await supabase.from("custom_quote_items").insert(
       items.map((item) => ({
         category: item.category || "Produto",
         custom_quote_id: quoteId,
         image_url: item.imageUrl,
         name: item.name,
-        product_id: item.id,
+        product_id: item.productId,
         quantity: item.quantity,
         service_slug: item.serviceSlug,
         structure: item.structure,
@@ -982,22 +1246,190 @@ export const useAdminPanel = () => {
     );
 
     if (itemsResult.error) {
+      console.error(
+        "Erro ao guardar artigos da cotacao personalizada",
+        itemsResult.error,
+      );
       showToast$(
         "Cotacao parcial",
-        "A cotacao foi criada, mas os artigos nao foram guardados corretamente.",
+        itemsResult.error.message ||
+          "A cotacao foi criada, mas os artigos nao foram guardados corretamente.",
       );
       return;
     }
 
     showToast$(
-      "Cotacao personalizada criada",
-      `${quoteNumber} de ${customerName} foi guardada com ${items.length} artigo(s).`,
+      editingCustomQuoteId.value
+        ? "Cotacao personalizada atualizada"
+        : "Cotacao personalizada criada",
+      `${savedQuoteNumber} de ${customerName} foi guardada com ${items.length} artigo(s).`,
     );
     customQuoteLastCreatedId.value = quoteId;
     await resetCustomQuoteDraft$();
     customQuoteFormOpen.value = false;
     customQuoteTableOpen.value = true;
     await refreshOwnerContent$();
+  });
+
+  const activateCustomQuoteRequest$ = $(async (quote: AdminCustomQuote) => {
+    const supabase = getSupabaseBrowserClient();
+    const items = Array.isArray(quote.selected_items)
+      ? quote.selected_items.filter((item) => item.quantity > 0)
+      : [];
+
+    if (!supabase) {
+      showToast$(
+        "Base de dados indisponivel",
+        "Nao foi possivel abrir a ligacao com a base de dados.",
+      );
+      return;
+    }
+
+    if (items.length === 0) {
+      showToast$(
+        "Cotacao sem artigos",
+        "Adicione artigos antes de ativar esta cotacao como solicitacao.",
+      );
+      return;
+    }
+
+    const existingQuote = await supabase
+      .from("quotes")
+      .select("id,status")
+      .eq("quote_number", quote.quote_number)
+      .maybeSingle();
+
+    if (existingQuote.error) {
+      showToast$(
+        "Solicitacao nao verificada",
+        existingQuote.error.message ||
+          "Nao foi possivel confirmar se esta cotacao ja esta nas solicitacoes.",
+      );
+      return;
+    }
+
+    if (existingQuote.data?.id) {
+      const proformaStatus =
+        existingQuote.data.status === "finalizado" ||
+        existingQuote.data.status === "concluido"
+          ? "fatura_proforma_cumprida"
+          : existingQuote.data.status === "em_atividade" ||
+              existingQuote.data.status === "aprovado" ||
+              existingQuote.data.status === "reclamacao"
+            ? "recebido"
+            : "enviado";
+
+      await supabase
+        .from("custom_quotes")
+        .update({
+          status: proformaStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", quote.id);
+
+      showToast$(
+        "Fatura proforma enviada",
+        `${quote.quote_number} ja aparece na area de solicitacoes.`,
+      );
+      await refreshOwnerContent$();
+      await refreshOperatorQuotes$();
+      return;
+    }
+
+    const laborTotal = items
+      .filter((item) => item.category.toLowerCase() === "servico")
+      .reduce(
+        (sum, item) => sum + asNumber(item.unitPrice) * asNumber(item.quantity),
+        0,
+      );
+    const total = asNumber(quote.total);
+    const quoteResult = await supabase
+      .from("quotes")
+      .insert({
+        currency: quote.currency || "MZN",
+        customer_snapshot: {
+          address: quote.customer_address,
+          city: quote.customer_address,
+          contacto: quote.customer_contact,
+          contact: quote.customer_contact,
+          customerType: quote.customer_type,
+          email: quote.customer_contact.includes("@")
+            ? quote.customer_contact
+            : "",
+          name: quote.customer_name,
+          nuit: quote.customer_nuit,
+          phone: quote.customer_contact,
+          source: "Cotacao personalizada",
+        },
+        labor_total: laborTotal,
+        profile_id: quote.profile_id,
+        quote_number: quote.quote_number,
+        request_payload: {
+          commitmentTerms: quote.commitment_terms,
+          contact: quote.customer_contact,
+          contacto: quote.customer_contact,
+          customerAddress: quote.customer_address,
+          customerName: quote.customer_name,
+          customerNuit: quote.customer_nuit,
+          customerType: quote.customer_type,
+          customQuoteId: quote.id,
+          customQuoteNumber: quote.quote_number,
+          notes: quote.notes,
+          selectedItems: items,
+          source: "custom_quote",
+          structureType: quote.structure,
+        },
+        service_slug: quote.service_slug,
+        status: "em_processamento",
+        subtotal: asNumber(quote.subtotal) || total,
+        total,
+      })
+      .select("id")
+      .single();
+
+    if (quoteResult.error || !quoteResult.data) {
+      showToast$(
+        "Solicitacao nao ativada",
+        quoteResult.error?.message ||
+          "Nao foi possivel colocar esta cotacao nas solicitacoes.",
+      );
+      return;
+    }
+
+    const itemsResult = await supabase.from("quote_items").insert(
+      items.map((item) => ({
+        locked: true,
+        name: item.name,
+        quantity: item.quantity,
+        quote_id: quoteResult.data.id,
+        unit: item.unit || "Un",
+        unit_price: item.unitPrice,
+      })),
+    );
+
+    if (itemsResult.error) {
+      showToast$(
+        "Solicitacao parcial",
+        itemsResult.error.message ||
+          "A solicitacao foi criada, mas os artigos nao foram ligados corretamente.",
+      );
+      return;
+    }
+
+    await supabase
+      .from("custom_quotes")
+      .update({
+        status: "enviado",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", quote.id);
+
+    showToast$(
+      "Fatura proforma enviada",
+      `${quote.quote_number} ja esta em solicitacoes, pronta para proceder.`,
+    );
+    await refreshOwnerContent$();
+    await refreshOperatorQuotes$();
   });
 
   const toggleContent$ = $(async (
@@ -1129,6 +1561,7 @@ export const useAdminPanel = () => {
     productDraft.imagePreviewUrl = "";
     productDraft.imageUrl = product.image_url;
     productDraft.name = product.name;
+    productDraft.shortName = product.short_name || "";
     productDraft.serviceSlug = product.service_slug;
     productDraft.structure = product.structure;
     productDraft.unitPrice = asNumber(product.unit_price);
@@ -1147,7 +1580,7 @@ export const useAdminPanel = () => {
     structureOptionDraft.imageUrl = option.image_url;
     structureOptionDraft.serviceSlug = option.service_slug;
     structureOptionDraft.sortOrder = asNumber(option.sort_order || 10);
-    structureOptionDraft.stepsText = option.steps.join("\n");
+    structureOptionDraft.steps = normalizeStructureSteps(option.steps);
     structureOptionDraft.structure = option.structure;
     structureOptionDraft.structureCostPercentage = asNumber(
       option.structure_cost_percentage,
@@ -1261,29 +1694,184 @@ export const useAdminPanel = () => {
     showToast$("Promocao em edicao", promotion.title);
   });
 
-  const saveQuoteProgress$ = $(async (quoteId: string) => {
-    const supabase = getSupabaseBrowserClient();
-    const draft = drafts[quoteId];
+  const editCustomQuote$ = $((quote: AdminCustomQuote) => {
+    const selectedItems = Array.isArray(quote.selected_items)
+      ? quote.selected_items
+      : [];
+    const executionItem = selectedItems.find(
+      (item) =>
+        !item.productId &&
+        item.category.toLowerCase() === "servico" &&
+        item.name.toLowerCase().includes("instal"),
+    );
+    const productItems = selectedItems.filter((item) => item !== executionItem);
 
-    if (!supabase || !draft) {
+    editingCustomQuoteId.value = quote.id;
+    customQuoteFormOpen.value = true;
+    customQuoteTableOpen.value = true;
+    customQuoteProductPickerOpen.value = false;
+    customQuoteProductSearch.value = "";
+
+    customQuoteDraft.commitmentTerms = quote.commitment_terms || "";
+    customQuoteDraft.contacto = quote.customer_contact || "";
+    customQuoteDraft.currency = quote.currency || "MZN";
+    customQuoteDraft.customerMode = quote.profile_id ? "registered" : "temporary";
+    customQuoteDraft.customerName = quote.customer_name || "";
+    customQuoteDraft.executionBaseItemId =
+      executionItem?.linkedBaseItemId ?? "";
+    customQuoteDraft.executionDescription =
+      executionItem?.name || "Instalacao, configuracao e testes";
+    customQuoteDraft.executionUnitPrice = asNumber(executionItem?.unitPrice);
+    customQuoteDraft.items = productItems.map((item) => {
+      const productId = item.productId || item.id || null;
+      const product = productId
+        ? ownerProducts.value.find((productItem) => productItem.id === productId)
+        : null;
+
+      return {
+        category: item.category || product?.category || "Produto",
+        id: item.id || product?.id || crypto.randomUUID(),
+        imageUrl: item.imageUrl || product?.image_url || "",
+        name: item.name || product?.name || "Artigo",
+        productId: product?.id ?? productId,
+        quantity: Math.max(1, asNumber(item.quantity) || 1),
+        shortName: item.shortName || product?.short_name || "",
+        serviceSlug:
+          item.serviceSlug || product?.service_slug || quote.service_slug || "",
+        structure: item.structure || product?.structure || "",
+        unit: item.unit || product?.unit || "Un",
+        unitPrice: asNumber(item.unitPrice ?? product?.unit_price),
+      };
+    });
+    customQuoteDraft.morada = quote.customer_address || "";
+    customQuoteDraft.notes = quote.notes || "";
+    customQuoteDraft.nuit = quote.customer_nuit || "";
+    customQuoteDraft.profileId = quote.profile_id ?? "";
+    customQuoteDraft.serviceSlug = quote.service_slug ?? "";
+    customQuoteDraft.sourceTemplateId = quote.source_quote_template_id ?? "";
+    customQuoteDraft.structure =
+      quote.structure ?? productItems[0]?.structure ?? "";
+
+    showToast$("Cotacao em edicao", quote.quote_number);
+  });
+
+  const saveAdminUserRole$ = $(async (
+    userId: string,
+    role: "owner" | "admin" | "operador" | "",
+  ) => {
+    const supabase = getSupabaseBrowserClient();
+
+    if (!supabase || !userId) {
       return;
     }
 
+    const { error } = role
+      ? await supabase.from("admin_users").upsert(
+          {
+            active: true,
+            role,
+            updated_at: new Date().toISOString(),
+            user_id: userId,
+          },
+          { onConflict: "user_id" },
+        )
+      : await supabase
+          .from("admin_users")
+          .update({
+            active: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", userId);
+
+    showToast$(
+      error ? "Erro no usuario" : "Usuario atualizado",
+      error
+        ? "Nao foi possivel atualizar o papel administrativo."
+        : role
+          ? "O usuario recebeu o papel administrativo escolhido."
+          : "O acesso administrativo deste usuario foi desativado.",
+    );
+
+    if (!error) {
+      await refreshOwnerContent$();
+    }
+  });
+
+  const saveQuoteProgress$ = $(async (quoteId: string, complaintText = "") => {
+    const supabase = getSupabaseBrowserClient();
+    const quote = operatorQuotes.value.find((item) => item.id === quoteId);
+    const draft = drafts[quoteId];
+
+    if (!supabase || !quote || !draft) {
+      return;
+    }
+
+    const requestPayload =
+      quote.request_payload && typeof quote.request_payload === "object"
+        ? quote.request_payload
+        : {};
+    const steps = normalizeProcedureSteps(requestPayload.procedureSteps);
+    const completedSteps = steps.filter((step) => step.checked).length;
+    const hasSteps = steps.length > 0;
+    const allStepsCompleted = hasSteps && completedSteps === steps.length;
+    const firstOpenStep = steps.find((step) => !step.checked);
+    const progress = hasSteps
+      ? Math.round((completedSteps / steps.length) * 100)
+      : draft.status === "Finalizado"
+        ? 100
+        : draft.progress;
+    const complaint = complaintText.trim();
+    const previousComplaints = Array.isArray(requestPayload.complaints)
+      ? requestPayload.complaints
+      : [];
     const updates = draft.updatesText
       .split("\n")
       .map((item) => item.trim())
       .filter(Boolean);
+    const nextUpdates = [
+      ...updates,
+      ...(hasSteps
+        ? [
+            `Passos concluidos: ${completedSteps}/${steps.length}.`,
+            ...(firstOpenStep
+              ? [`Proximo passo: ${firstOpenStep.label}.`]
+              : ["Todos os passos foram concluidos."]),
+          ]
+        : []),
+      ...(complaint ? [`Reclamacao do operador: ${complaint}`] : []),
+    ];
+    const nextStatus = complaint
+      ? "Reclamacao"
+      : allStepsCompleted
+        ? "Finalizado"
+        : "Em actividade";
 
     const { error } = await supabase
       .from("quotes")
       .update({
         estimated_completion: draft.estimatedCompletion || null,
-        next_step: draft.nextStep,
-        progress: draft.status === "Concluido" ? 100 : draft.progress,
-        status: statusToDatabase(draft.status as ProjectStatus),
+        next_step:
+          firstOpenStep?.label ??
+          (allStepsCompleted ? "Servico terminado." : draft.nextStep),
+        progress,
+        request_payload: {
+          ...requestPayload,
+          complaints: complaint
+            ? [
+                ...previousComplaints,
+                {
+                  author: "operador",
+                  createdAt: new Date().toISOString(),
+                  message: complaint,
+                },
+              ]
+            : previousComplaints,
+          procedureSteps: steps,
+        },
+        status: statusToDatabase(nextStatus as ProjectStatus),
         technician: draft.technician,
         updated_at: new Date().toISOString(),
-        updates,
+        updates: nextUpdates,
       })
       .eq("id", quoteId);
 
@@ -1297,6 +1885,146 @@ export const useAdminPanel = () => {
     );
 
     if (!error) {
+      if (
+        allStepsCompleted &&
+        quote.request_payload?.source === "custom_quote" &&
+        typeof quote.request_payload?.customQuoteId === "string"
+      ) {
+        await supabase
+          .from("custom_quotes")
+          .update({
+            status: "fatura_proforma_cumprida",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", quote.request_payload.customQuoteId);
+      }
+      await refreshOperatorQuotes$();
+      await refreshOwnerContent$();
+    }
+  });
+
+  const registerQuoteComplaint$ = $(async (quoteId: string, message: string) => {
+    const supabase = getSupabaseBrowserClient();
+    const quote = operatorQuotes.value.find((item) => item.id === quoteId);
+    const complaint = message.trim();
+
+    if (!supabase || !quote || !complaint) {
+      showToast$(
+        "Reclamacao incompleta",
+        "Escreva o motivo da reclamacao antes de guardar.",
+      );
+      return false;
+    }
+
+    const requestPayload =
+      quote.request_payload && typeof quote.request_payload === "object"
+        ? quote.request_payload
+        : {};
+    const previousComplaints = Array.isArray(requestPayload.complaints)
+      ? requestPayload.complaints
+      : [];
+    const updates = [
+      ...asStringArray(quote.updates),
+      `Reclamacao do operador: ${complaint}`,
+    ];
+
+    const { error } = await supabase
+      .from("quotes")
+      .update({
+        next_step: "Reclamacao aberta para analise da Bitoll.",
+        progress: Math.min(99, Math.max(5, asNumber(quote.progress ?? 0))),
+        request_payload: {
+          ...requestPayload,
+          complaints: [
+            ...previousComplaints,
+            {
+              author: "operador",
+              message: complaint,
+              createdAt: new Date().toISOString(),
+            },
+          ],
+        },
+        status: "reclamacao",
+        updated_at: new Date().toISOString(),
+        updates,
+      })
+      .eq("id", quoteId);
+
+    showToast$(
+      error ? "Reclamacao nao guardada" : "Reclamacao registada",
+      error
+        ? error.message || "Nao foi possivel guardar a reclamacao."
+        : "A solicitacao foi marcada como reclamacao.",
+    );
+
+    if (!error) {
+      await refreshOperatorQuotes$();
+    }
+
+    return !error;
+  });
+
+  const rollbackQuoteRequest$ = $(async (quoteId: string) => {
+    const supabase = getSupabaseBrowserClient();
+    const quote = operatorQuotes.value.find((item) => item.id === quoteId);
+    const requestPayload =
+      quote?.request_payload && typeof quote.request_payload === "object"
+        ? quote.request_payload
+        : {};
+
+    if (!supabase || !quote) {
+      return;
+    }
+
+    const customQuoteId =
+      requestPayload.source === "custom_quote" &&
+      typeof requestPayload.customQuoteId === "string"
+        ? requestPayload.customQuoteId
+        : "";
+    const { error } = await supabase
+      .from("quotes")
+      .update({
+        next_step:
+          "A solicitacao foi recusada pela Bitoll. Contacte a equipa para esclarecimentos ou nova validacao.",
+        progress: 0,
+        request_payload: {
+          ...requestPayload,
+          refusedAt: new Date().toISOString(),
+          refusedReason:
+            "Solicitacao retirada antes da procedencia administrativa.",
+        },
+        status: "recusado",
+        technician: "",
+        technician_id: null,
+        updated_at: new Date().toISOString(),
+        updates: [
+          "Solicitacao recusada antes da procedencia administrativa.",
+          "A equipa Bitoll pode ser contactada para nova validacao.",
+        ],
+      })
+      .eq("id", quoteId);
+
+    if (!error && customQuoteId) {
+      await supabase
+        .from("custom_quotes")
+        .update({
+          status: "recusado",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", customQuoteId);
+    }
+
+    showToast$(
+      error ? "Solicitacao nao retirada" : "Solicitacao retirada",
+      error
+        ? error.message || "Nao foi possivel retirar esta solicitacao."
+        : customQuoteId
+          ? `${quote.quote_number} saiu das solicitacoes, ficou visivel ao cliente como recusada e a fatura proforma foi marcada como recusada.`
+          : `${quote.quote_number} saiu das solicitacoes e ficou visivel ao cliente como recusada. A proforma padrao nao foi alterada.`,
+    );
+
+    if (!error) {
+      await refreshOwnerContent$();
       await refreshOperatorQuotes$();
     }
   });
@@ -1304,13 +2032,85 @@ export const useAdminPanel = () => {
   const openQuoteProcedure$ = $((quoteId: string) => {
     const quote = operatorQuotes.value.find((item) => item.id === quoteId);
     const draft = drafts[quoteId];
+    const structureKey =
+      typeof quote?.request_payload?.structureType === "string"
+        ? quote.request_payload.structureType
+        : "";
+    const structure = ownerStructureOptions.value.find(
+      (option) =>
+        option.service_slug === quote?.service_slug &&
+        option.structure === structureKey,
+    );
+    const savedProcedureSteps = normalizeProcedureSteps(
+      quote?.request_payload?.procedureSteps,
+    );
+    const baseProcedureSteps =
+      savedProcedureSteps.length > 0
+        ? savedProcedureSteps
+        : normalizeStructureSteps(structure?.steps ?? []).map((step) => ({
+            checked: false,
+            day: step.day,
+            label: step.label,
+          }));
 
     quoteProcedureQuoteId.value = quoteId;
     quoteProcedureOperatorId.value = quote?.technician_id ?? "";
-    quoteProcedureStepIndex.value = 0;
+    quoteProcedureStartDate.value =
+      typeof quote?.request_payload?.serviceStartDate === "string"
+        ? quote.request_payload.serviceStartDate
+        : new Date().toISOString().slice(0, 10);
+    quoteProcedurePaymentType.value =
+      quote?.request_payload?.paymentType === "proforma" ||
+      quote?.request_payload?.paymentType === "labor"
+        ? quote.request_payload.paymentType
+        : "";
+    quoteProcedurePaymentAmount.value =
+      typeof quote?.request_payload?.paymentAmount === "number" ||
+      typeof quote?.request_payload?.paymentAmount === "string"
+        ? asNumber(quote.request_payload.paymentAmount)
+        : asNumber(quote?.total);
+    quoteProcedurePaymentMethod.value =
+      quote?.request_payload?.paymentMethod === "cash" ||
+      quote?.request_payload?.paymentMethod === "account"
+        ? quote.request_payload.paymentMethod
+        : "";
+    quoteProcedurePaymentOriginType.value =
+      quote?.request_payload?.paymentOriginType === "BIM" ||
+      quote?.request_payload?.paymentOriginType === "BCI" ||
+      quote?.request_payload?.paymentOriginType === "E-Mola" ||
+      quote?.request_payload?.paymentOriginType === "M-Pesa"
+        ? quote.request_payload.paymentOriginType
+        : "";
+    quoteProcedurePaymentOriginNumber.value =
+      typeof quote?.request_payload?.paymentOriginNumber === "string"
+        ? quote.request_payload.paymentOriginNumber
+        : "";
+    quoteProcedurePaymentDestinationType.value =
+      quote?.request_payload?.paymentDestinationType === "BIM" ||
+      quote?.request_payload?.paymentDestinationType === "BCI" ||
+      quote?.request_payload?.paymentDestinationType === "E-Mola" ||
+      quote?.request_payload?.paymentDestinationType === "M-Pesa"
+        ? quote.request_payload.paymentDestinationType
+        : "";
+    quoteProcedurePaymentDestinationNumber.value =
+      typeof quote?.request_payload?.paymentDestinationNumber === "string"
+        ? quote.request_payload.paymentDestinationNumber
+        : "";
+    quoteProcedureReceiptNumber.value =
+      typeof quote?.request_payload?.receiptNumber === "string"
+        ? quote.request_payload.receiptNumber
+        : "";
+    quoteProcedureReceiptUrl.value =
+      typeof quote?.request_payload?.receiptUrl === "string"
+        ? quote.request_payload.receiptUrl
+        : "";
+    quoteProcedureSteps.items = baseProcedureSteps;
 
     if (draft) {
-      draft.status = "Em avaliacao";
+      draft.status =
+        quote?.status === "em_atividade" || quote?.status === "aprovado"
+          ? "Em actividade"
+          : databaseToStatus(quote?.status ?? "em_processamento");
       draft.progress = Math.max(5, draft.progress || 0);
     }
 
@@ -1321,7 +2121,17 @@ export const useAdminPanel = () => {
     quoteProcedureOpen.value = false;
     quoteProcedureQuoteId.value = "";
     quoteProcedureOperatorId.value = "";
-    quoteProcedureStepIndex.value = 0;
+    quoteProcedureStartDate.value = "";
+    quoteProcedurePaymentType.value = "";
+    quoteProcedurePaymentAmount.value = 0;
+    quoteProcedurePaymentMethod.value = "";
+    quoteProcedurePaymentOriginType.value = "";
+    quoteProcedurePaymentOriginNumber.value = "";
+    quoteProcedurePaymentDestinationType.value = "";
+    quoteProcedurePaymentDestinationNumber.value = "";
+    quoteProcedureReceiptNumber.value = "";
+    quoteProcedureReceiptUrl.value = "";
+    quoteProcedureSteps.items = [];
   });
 
   const saveQuoteProcedure$ = $(async () => {
@@ -1342,39 +2152,132 @@ export const useAdminPanel = () => {
       return;
     }
 
-    const structureKey =
-      typeof quote.request_payload?.structureType === "string"
-        ? quote.request_payload.structureType
-        : "";
-    const structure = ownerStructureOptions.value.find(
-      (option) =>
-        option.service_slug === quote.service_slug &&
-        option.structure === structureKey,
-    );
-    const steps = structure?.steps ?? [];
+    const steps = normalizeProcedureSteps(quoteProcedureSteps.items);
+    const hasValidPayment =
+      Boolean(quoteProcedurePaymentType.value) &&
+      quoteProcedurePaymentAmount.value > 0 &&
+      Boolean(quoteProcedurePaymentMethod.value) &&
+      (quoteProcedurePaymentMethod.value === "cash" ||
+        (Boolean(quoteProcedurePaymentOriginType.value) &&
+          Boolean(quoteProcedurePaymentOriginNumber.value.trim()) &&
+          Boolean(quoteProcedurePaymentDestinationType.value) &&
+          Boolean(quoteProcedurePaymentDestinationNumber.value.trim())));
+    const hasValidSteps = steps.some((step) => step.label.trim());
+
+    if (!hasValidPayment || !quoteProcedureReceiptNumber.value) {
+      showToast$(
+        "Pagamento por confirmar",
+        "Comprove o pagamento com valor, forma e dados da conta quando aplicavel.",
+      );
+      return;
+    }
+
+    if (!quoteProcedureStartDate.value) {
+      showToast$(
+        "Data de inicio em falta",
+        "Informe a data em que a equipa inicia o servico.",
+      );
+      return;
+    }
+
+    if (!hasValidSteps) {
+      showToast$(
+        "Passos em falta",
+        "Defina pelo menos um passo do servico antes de guardar.",
+      );
+      return;
+    }
+
+    const firstOpenStep = steps.find((step) => !step.checked) ?? steps[0];
     const selectedStep =
-      steps[quoteProcedureStepIndex.value] ??
-      (draft.nextStep || "Estudar a area e validar os dados do servico.");
+      firstOpenStep?.label ??
+      (draft.nextStep || "Procedimento por definir.");
+    const selectedStepDay = firstOpenStep?.day ?? 1;
+    const estimatedDays = getStructureEstimatedDays(steps);
+    const forecastMessage =
+      estimatedDays > 0
+        ? `Previsao do servico: ${estimatedDays} dia${
+            estimatedDays === 1 ? "" : "s"
+          }.`
+        : "Previsao do servico ainda nao definida em dias.";
     const operatorName =
       operator.full_name || operator.email || operator.phone || "Operador Bitoll";
+    const requestPayload =
+      quote.request_payload && typeof quote.request_payload === "object"
+        ? quote.request_payload
+        : {};
 
     const { error } = await supabase
       .from("quotes")
       .update({
         next_step: selectedStep,
         progress: Math.max(5, draft.progress || 0),
-        status: statusToDatabase("Em avaliacao"),
+        request_payload: {
+          ...requestPayload,
+          paymentType: quoteProcedurePaymentType.value,
+          paymentTypeLabel:
+            quoteProcedurePaymentType.value === "proforma"
+              ? "Pagou a fatura proforma"
+              : "Pagou mao de obra da fatura proforma",
+          paymentAmount: quoteProcedurePaymentAmount.value,
+          paymentMethod: quoteProcedurePaymentMethod.value,
+          paymentMethodLabel:
+            quoteProcedurePaymentMethod.value === "cash"
+              ? "Dinheiro vivo"
+              : "Conta",
+          paymentOriginType: quoteProcedurePaymentOriginType.value,
+          paymentOriginNumber: quoteProcedurePaymentOriginNumber.value.trim(),
+          paymentDestinationType: quoteProcedurePaymentDestinationType.value,
+          paymentDestinationNumber:
+            quoteProcedurePaymentDestinationNumber.value.trim(),
+          receiptNumber: quoteProcedureReceiptNumber.value,
+          receiptUrl: quoteProcedureReceiptUrl.value,
+          procedureSteps: steps,
+          procedureEstimatedDays: estimatedDays,
+          serviceStartDate: quoteProcedureStartDate.value,
+          serviceEndDate:
+            estimatedDays > 0
+              ? getDateAfterDays(quoteProcedureStartDate.value, estimatedDays)
+              : null,
+        },
+        status: "em_atividade",
         technician: operatorName,
         technician_id: operator.id,
+        estimated_completion:
+          estimatedDays > 0
+            ? getDateAfterDays(quoteProcedureStartDate.value, estimatedDays)
+            : null,
         updated_at: new Date().toISOString(),
         updates: [
           `Solicitacao recebida e atribuida ao operador ${operatorName}.`,
+          "Estado: em actividade.",
           `Passo atual: ${selectedStep}`,
+          `Dia previsto deste passo: ${selectedStepDay}.`,
+          forecastMessage,
+          ...steps.map(
+            (step, index) =>
+              `${step.checked ? "[x]" : "[ ]"} Passo ${index + 1}: ${
+                step.label
+              } - dia ${step.day}`,
+          ),
         ],
       })
       .eq("id", quote.id);
 
     if (!error) {
+      if (
+        requestPayload.source === "custom_quote" &&
+        typeof requestPayload.customQuoteId === "string"
+      ) {
+        await supabase
+          .from("custom_quotes")
+          .update({
+            status: "recebido",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", requestPayload.customQuoteId);
+      }
+      await refreshOwnerContent$();
       await refreshOperatorQuotes$();
       closeQuoteProcedure$();
     }
@@ -1383,42 +2286,58 @@ export const useAdminPanel = () => {
       error ? "Erro ao proceder" : "Solicitacao procedida",
       error
         ? "Nao foi possivel guardar o tecnico operador agora."
-        : `A solicitacao foi atribuida a ${operatorName}.`,
+        : `A solicitacao foi aprovada e atribuida a ${operatorName}.`,
     );
   });
 
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(async () => {
-    authUser.value = getCachedAuthUser();
-    adminAccess.value = getCachedAdminAccess();
+    try {
+      authUser.value = getCachedAuthUser();
+      adminAccess.value = getCachedAdminAccess();
 
-    const access = await loadAdminAccess();
-    adminAccess.value = access;
+      const supabase = getSupabaseBrowserClient();
+      const { data: sessionData } = supabase
+        ? await supabase.auth.getSession()
+        : { data: { session: null } };
+      const sessionUserId = sessionData.session?.user.id;
 
-    if (access.isAdmin) {
-      await refreshOperatorQuotes$();
+      if (
+        sessionData.session &&
+        (!authUser.value || String(authUser.value.id) !== sessionUserId)
+      ) {
+        markLocalAuthSession(sessionData.session);
+        authUser.value = getCachedAuthUser();
+      }
+
+      const access = await loadAdminAccess();
+      adminAccess.value = access;
+
+      if (access.isAdmin) {
+        await refreshOperatorQuotes$();
+      }
+
+      if (access.isAdmin && access.role !== "operador") {
+        await refreshOwnerContent$();
+
+        const [services, products, promotions, quotes] = await Promise.all([
+          countTable("services"),
+          countTable("service_products"),
+          countTable("promotions"),
+          countTable("quotes"),
+        ]);
+
+        metrics.value = [
+          { label: "Servicos", value: String(services) },
+          { label: "Produtos", value: String(products) },
+          { label: "Cotacoes base", value: String(ownerTemplates.value.length) },
+          { label: "Promocoes", value: String(promotions) },
+          { label: "Cotacoes", value: String(quotes) },
+        ];
+      }
+    } finally {
+      isLoading.value = false;
     }
-
-    if (access.isAdmin && access.role !== "operador") {
-      await refreshOwnerContent$();
-
-      const [services, products, promotions, quotes] = await Promise.all([
-        countTable("services"),
-        countTable("service_products"),
-        countTable("promotions"),
-        countTable("quotes"),
-      ]);
-
-      metrics.value = [
-        { label: "Servicos", value: String(services) },
-        { label: "Produtos", value: String(products) },
-        { label: "Cotacoes base", value: String(ownerTemplates.value.length) },
-        { label: "Promocoes", value: String(promotions) },
-        { label: "Cotacoes", value: String(quotes) },
-      ];
-    }
-
-    isLoading.value = false;
   });
 
   return {
@@ -1439,6 +2358,7 @@ export const useAdminPanel = () => {
     ownerPromotions,
     ownerCustomers,
     ownerCustomQuotes,
+    ownerAdminUsers,
     ownerOperators,
 
     ownerTab,
@@ -1459,7 +2379,17 @@ export const useAdminPanel = () => {
     quoteProcedureOpen,
     quoteProcedureQuoteId,
     quoteProcedureOperatorId,
-    quoteProcedureStepIndex,
+    quoteProcedureStartDate,
+    quoteProcedurePaymentType,
+    quoteProcedurePaymentAmount,
+    quoteProcedurePaymentMethod,
+    quoteProcedurePaymentOriginType,
+    quoteProcedurePaymentOriginNumber,
+    quoteProcedurePaymentDestinationType,
+    quoteProcedurePaymentDestinationNumber,
+    quoteProcedureReceiptNumber,
+    quoteProcedureReceiptUrl,
+    quoteProcedureSteps,
 
     feedback,
 
@@ -1494,6 +2424,7 @@ export const useAdminPanel = () => {
     customQuoteDraft,
     customQuoteProductPickerOpen,
     customQuoteProductSearch,
+    editingCustomQuoteId,
     customQuoteFormOpen,
     customQuoteLastCreatedId,
     customQuoteTableOpen,
@@ -1512,8 +2443,12 @@ export const useAdminPanel = () => {
     saveProduct$,
     saveTemplate$,
     savePromotion$,
+    saveAdminUserRole$,
     saveCustomQuote$,
+    activateCustomQuoteRequest$,
     saveQuoteProgress$,
+    registerQuoteComplaint$,
+    rollbackQuoteRequest$,
     openQuoteProcedure$,
     closeQuoteProcedure$,
     saveQuoteProcedure$,
@@ -1528,10 +2463,12 @@ export const useAdminPanel = () => {
     editProduct$,
     editTemplate$,
     editPromotion$,
+    editCustomQuote$,
 
     resetCustomQuoteDraft$,
     selectCustomQuoteCustomer$,
     addCustomQuoteProduct$,
+    applyCustomQuoteTemplate$,
     updateCustomQuoteItemQuantity$,
     removeCustomQuoteItem$,
   };

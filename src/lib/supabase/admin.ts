@@ -1,4 +1,4 @@
-import { getCachedAuthUser, getSupabaseBrowserClient } from "./client";
+import { getSupabaseBrowserClient } from "./client";
 
 export type AdminAccess = {
   isAdmin: boolean;
@@ -31,9 +31,15 @@ export const clearCachedAdminAccess = () => {
 
 export const loadAdminAccess = async (): Promise<AdminAccess> => {
   const supabase = getSupabaseBrowserClient();
-  const user = getCachedAuthUser();
 
-  if (!supabase || !user) {
+  if (!supabase) {
+    clearCachedAdminAccess();
+    return { isAdmin: false, role: null };
+  }
+
+  const { data: sessionData } = await supabase.auth.getSession();
+
+  if (!sessionData.session) {
     clearCachedAdminAccess();
     return { isAdmin: false, role: null };
   }

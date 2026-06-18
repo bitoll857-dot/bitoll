@@ -30,6 +30,7 @@ export interface ServiceProduct {
   id: string;
   laborSourceProductId?: string;
   name: string;
+  shortName?: string;
   quantity: string;
   estimatedQuantity?: number;
   unitPrice?: number;

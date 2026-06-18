@@ -62,6 +62,7 @@ type ProductRow = {
   service_slug: string;
   structure: StructureType;
   name: string;
+  short_name: string;
   unit: string;
   quantity_label: string;
   estimated_quantity: number | string;
@@ -216,6 +217,7 @@ const mapPromotion = (row: PromotionRow, index: number): Promotion => ({
 const mapProduct = (row: ProductRow): ServiceProduct => ({
   id: row.id,
   name: row.name,
+  shortName: row.short_name,
   quantity: row.quantity_label || `${asNumber(row.estimated_quantity)} ${row.unit}`,
   estimatedQuantity: asNumber(row.estimated_quantity),
   unitPrice: asNumber(row.unit_price),
@@ -249,6 +251,7 @@ const mapTemplateItem = (
 ): ServiceProduct => ({
   id: row.product_id ?? row.id,
   name: row.name,
+  shortName: sourceProduct?.short_name || undefined,
   quantity: `${Math.max(1, Math.floor(asNumber(row.default_quantity) || 1))} ${row.unit}`,
   estimatedQuantity: Math.max(1, Math.floor(asNumber(row.default_quantity) || 1)),
   defaultQuantity: Math.max(1, Math.floor(asNumber(row.default_quantity) || 1)),
@@ -312,7 +315,7 @@ const loadTemplateSourceProductsMap = async (
   const { data, error } = await supabase
     .from("service_products")
     .select(
-      "id,service_slug,structure,name,unit,quantity_label,estimated_quantity,unit_price,brand,model,system,category,description,detail,image_url,required",
+      "id,service_slug,structure,name,short_name,unit,quantity_label,estimated_quantity,unit_price,brand,model,system,category,description,detail,image_url,required",
     )
     .in("id", uniqueProductIds);
 
@@ -597,7 +600,7 @@ export const loadServiceProductCatalogsFromSupabase = async () => {
   const { data, error } = await supabase
     .from("service_products")
     .select(
-      "id,service_slug,structure,name,unit,quantity_label,estimated_quantity,unit_price,brand,model,system,category,description,detail,image_url,required",
+      "id,service_slug,structure,name,short_name,unit,quantity_label,estimated_quantity,unit_price,brand,model,system,category,description,detail,image_url,required",
     )
     .order("created_at", { ascending: true });
 
@@ -644,16 +647,23 @@ export const loadCustomerProjectsFromSupabase = async (): Promise<CustomerProjec
 
   return (data as QuoteRow[]).map((quote) => {
     const statusMap: Record<string, ProjectStatus> = {
-      aprovado: "Em instalacao",
-      concluido: "Concluido",
-      em_avaliacao: "Em avaliacao",
-      em_instalacao: "Em instalacao",
-      em_testes: "Em testes",
-      enviado: "Em avaliacao",
+      aprovado: "Em actividade",
+      concluido: "Finalizado",
+      em_atividade: "Em actividade",
+      em_avaliacao: "Em processamento",
+      em_instalacao: "Em actividade",
+      em_processamento: "Em processamento",
+      em_testes: "Em actividade",
+      enviado: "Em processamento",
+      finalizado: "Finalizado",
+      reclamacao: "Reclamacao",
+      recusado: "Recusado",
     };
     const status =
       statusMap[quote.status.toLowerCase()] ??
-      (quote.status === "Concluido" ? "Concluido" : "Em avaliacao");
+      (quote.status === "Concluido" || quote.status === "Finalizado"
+        ? "Finalizado"
+        : "Em processamento");
     const createdAt = quote.created_at.slice(0, 10);
     const updates = asStringArray(quote.updates);
     const nextStep = quote.next_step?.trim() ?? "";
@@ -704,7 +714,7 @@ export const loadCustomerProjectsFromSupabase = async (): Promise<CustomerProjec
       structureCost,
       structureCostPercentage,
       progressEnabled,
-      progress: status === "Concluido" ? 100 : progress,
+      progress: status === "Finalizado" ? 100 : progress,
       nextStep:
         (hasCustomNextStep ? nextStep : "") ||
         "A cotacao ainda esta em processo de validacao pela equipa Bitoll.",

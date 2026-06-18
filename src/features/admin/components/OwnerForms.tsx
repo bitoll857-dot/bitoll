@@ -6,6 +6,7 @@ import {
   maxImageSizeBytes,
   maxImageSizeMb,
   asNumber,
+  getStructureEstimatedDays,
   toSlug,
 } from "../utils/admin.utils";
 
@@ -185,6 +186,9 @@ export const StructureOptionForm = component$<Props>(({ admin }) => {
   const isDuplicatedStructure =
     Boolean(existingStructure) &&
     existingStructure?.id !== admin.editingStructureOptionId.value;
+  const estimatedStepDays = getStructureEstimatedDays(
+    admin.structureOptionDraft.steps,
+  );
 
   return (
     <form preventdefault:submit class="space-y-3">
@@ -357,25 +361,104 @@ export const StructureOptionForm = component$<Props>(({ admin }) => {
         </span>
       </label>
 
-      <label class="block">
-        <span class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-          Passos do procedimento
-        </span>
-        <textarea
-          value={admin.structureOptionDraft.stepsText}
-          placeholder={"Passo 1: Estudar a area\nPasso 2: Confirmar materiais\nPasso 3: Executar instalacao"}
-          class="mt-2 min-h-32 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-white outline-none"
-          onInput$={(event) => {
-            admin.structureOptionDraft.stepsText = (
-              event.target as HTMLTextAreaElement
-            ).value;
-          }}
-        />
-        <span class="mt-2 block text-xs leading-5 text-slate-500">
-          Escreva um passo por linha. Estes passos aparecem ao proceder uma
-          solicitacao desta estrutura.
-        </span>
-      </label>
+      <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Passos do procedimento
+            </p>
+            <p class="mt-1 text-xs leading-5 text-slate-500">
+              Adicione os passos que o operador deve seguir nesta estrutura.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="shrink-0 rounded-xl bg-cyan-400 px-3 py-2 text-xs font-black text-slate-950"
+            onClick$={() => {
+              admin.structureOptionDraft.steps = [
+                ...admin.structureOptionDraft.steps,
+                { day: 1, label: "" },
+              ];
+            }}
+          >
+            Adicionar passo
+          </button>
+        </div>
+
+        {admin.structureOptionDraft.steps.length > 0 && (
+          <div class="mt-3 space-y-3">
+            {admin.structureOptionDraft.steps.map((step, index) => (
+              <div
+                key={`structure-step-${index}`}
+                class="rounded-xl border border-slate-800 bg-slate-900/60 p-3"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <span class="text-xs font-bold uppercase tracking-[0.14em] text-cyan-100">
+                    Passo {index + 1}
+                  </span>
+
+                  <button
+                    type="button"
+                    class="rounded-lg border border-red-400/30 px-2 py-1 text-xs font-bold text-red-200"
+                    onClick$={() => {
+                      admin.structureOptionDraft.steps =
+                        admin.structureOptionDraft.steps.filter(
+                          (_item, itemIndex) => itemIndex !== index,
+                        );
+                    }}
+                  >
+                    Remover
+                  </button>
+                </div>
+
+                <label class="mt-3 block">
+                  <span class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    O que deve ser feito
+                  </span>
+                  <textarea
+                    value={step.label}
+                    placeholder="Ex: Visitar o local e confirmar os pontos de instalacao"
+                    class="mt-2 min-h-20 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-white outline-none"
+                    onInput$={(event) => {
+                      admin.structureOptionDraft.steps[index].label = (
+                        event.target as HTMLTextAreaElement
+                      ).value;
+                    }}
+                  />
+                </label>
+
+                <label class="mt-3 block">
+                  <span class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Dia previsto
+                  </span>
+                  <input
+                    min={1}
+                    step={1}
+                    type="number"
+                    value={step.day}
+                    class="mt-2 h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-white outline-none"
+                    onInput$={(event) => {
+                      admin.structureOptionDraft.steps[index].day = Math.max(
+                        1,
+                        Number((event.target as HTMLInputElement).value || 1),
+                      );
+                    }}
+                  />
+                  <span class="mt-2 block text-xs leading-5 text-slate-500">
+                    Varios passos podem ficar no mesmo dia previsto.
+                  </span>
+                </label>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <p class="mt-3 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-xs font-bold text-slate-300">
+          Previsao acumulada: {estimatedStepDays} dia
+          {estimatedStepDays === 1 ? "" : "s"}
+        </p>
+      </div>
 
       <label class="flex items-center gap-2 text-sm text-slate-300">
         <input
@@ -453,10 +536,21 @@ export const ProductForm = component$<Props>(({ admin }) => {
 
       <input
         value={admin.productDraft.name}
-        placeholder="Nome do artigo"
+        placeholder="Nome completo do artigo"
         class="h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-white outline-none"
         onInput$={(event) => {
           admin.productDraft.name = (event.target as HTMLInputElement).value;
+        }}
+      />
+
+      <input
+        value={admin.productDraft.shortName}
+        placeholder="Nome curto para WhatsApp"
+        class="h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-white outline-none"
+        onInput$={(event) => {
+          admin.productDraft.shortName = (
+            event.target as HTMLInputElement
+          ).value;
         }}
       />
 

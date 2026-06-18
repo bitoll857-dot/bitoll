@@ -4,11 +4,10 @@ export const maxImageSizeMb = 0.3;
 export const maxImageSizeBytes = maxImageSizeMb * 1024 * 1024;
 
 export const operatorStatuses: ProjectStatus[] = [
-  "Por proceder",
-  "Em avaliacao",
-  "Em instalacao",
-  "Em testes",
-  "Concluido",
+  "Em processamento",
+  "Em actividade",
+  "Reclamacao",
+  "Finalizado",
 ];
 
 export const quoteTemplateStructures = [
@@ -19,25 +18,29 @@ export const quoteTemplateStructures = [
 
 export const statusToDatabase = (status: ProjectStatus) =>
   ({
-    Concluido: "concluido",
-    "Em avaliacao": "em_avaliacao",
-    "Em instalacao": "em_instalacao",
-    "Em testes": "em_testes",
-    "Por proceder": "enviado",
-    Solicitado: "enviado",
+    "Em actividade": "em_atividade",
+    "Em processamento": "em_processamento",
+    Finalizado: "finalizado",
+    Reclamacao: "reclamacao",
+    Recusado: "recusado",
   })[status];
 
 export const databaseToStatus = (status: string): ProjectStatus => {
   const statusMap: Record<string, ProjectStatus> = {
-    aprovado: "Em instalacao",
-    concluido: "Concluido",
-    em_avaliacao: "Em avaliacao",
-    em_instalacao: "Em instalacao",
-    em_testes: "Em testes",
-    enviado: "Por proceder",
+    aprovado: "Em actividade",
+    concluido: "Finalizado",
+    em_atividade: "Em actividade",
+    em_avaliacao: "Em processamento",
+    em_instalacao: "Em actividade",
+    em_processamento: "Em processamento",
+    em_testes: "Em actividade",
+    enviado: "Em processamento",
+    finalizado: "Finalizado",
+    reclamacao: "Reclamacao",
+    recusado: "Recusado",
   };
 
-  return statusMap[status.toLowerCase()] ?? "Por proceder";
+  return statusMap[status.toLowerCase()] ?? "Em processamento";
 };
 
 export const asNumber = (value: number | string | null | undefined) =>
@@ -47,6 +50,79 @@ export const asStringArray = (value: unknown) =>
   Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
     : [];
+
+export const normalizeStructureSteps = (value: unknown) =>
+  Array.isArray(value)
+    ? value
+        .map((item) => {
+          if (typeof item === "string") {
+            return {
+              day: 1,
+              label: item.trim(),
+            };
+          }
+
+          if (!item || typeof item !== "object") {
+            return null;
+          }
+
+          const record = item as Record<string, unknown>;
+          const label =
+            typeof record.label === "string"
+              ? record.label
+              : typeof record.text === "string"
+                ? record.text
+                : typeof record.description === "string"
+                  ? record.description
+                  : "";
+
+          return {
+            day: Math.max(
+              1,
+              Math.ceil(
+                typeof record.day === "number" || typeof record.day === "string"
+                  ? asNumber(record.day)
+                  : typeof record.days === "number" || typeof record.days === "string"
+                    ? asNumber(record.days)
+                    : 1,
+              ),
+            ),
+            label: label.trim(),
+          };
+        })
+        .filter(
+          (step): step is { day: number; label: string } => Boolean(step?.label),
+        )
+    : [];
+
+export const getStructureEstimatedDays = (
+  steps: { day: number; label: string }[],
+) =>
+  steps.reduce(
+    (total, step) =>
+      Math.max(
+        total,
+        Math.max(
+          1,
+          Math.ceil(
+            typeof step.day === "number" || typeof step.day === "string"
+              ? asNumber(step.day)
+              : 1,
+          ),
+        ),
+      ),
+    0,
+  );
+
+export const legacyStructureStepDays = (value: unknown) =>
+  Math.max(
+    1,
+    Math.ceil(
+      typeof value === "number" || typeof value === "string"
+        ? asNumber(value)
+        : 1,
+    ),
+  );
 
 export const toSlug = (value: string) =>
   value

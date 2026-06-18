@@ -106,6 +106,60 @@ const formatDisplayDate = (date: Date) =>
     year: "numeric",
   });
 
+const getProformaNumber = (date = new Date()) => `1/${date.getFullYear()}`;
+const proformaValidityDays = 15;
+
+const proformaPolicySections = [
+  {
+    title: "Sobre os materiais da cotacao",
+    text: "O cliente adquire os materiais descritos nesta cotacao/proforma, conforme as quantidades, marcas, modelos e especificacoes apresentadas. Os materiais foram calculados com base na informacao fornecida pelo cliente e/ou na analise preliminar da equipa tecnica.",
+  },
+  {
+    title: "Analise no terreno",
+    text: "Durante os trabalhos podera ser feita uma analise tecnica mais detalhada no terreno. Se forem necessarios materiais adicionais, substituicoes ou ajustes tecnicos, a cotacao devera ser revista. Nenhum material adicional sera aplicado sem conhecimento e aprovacao previa do cliente.",
+  },
+  {
+    title: "Revisao da cotacao",
+    text: "Sempre que forem necessarios materiais ou servicos nao previstos inicialmente, sera apresentada uma atualizacao da cotacao/proforma ao cliente. A execucao dos trabalhos adicionais dependera da aprovacao do cliente e do respetivo pagamento.",
+  },
+  {
+    title: "Pagamento de materiais adicionais",
+    text: "Materiais em falta ou servicos extras identificados durante a instalacao serao de responsabilidade do cliente. Apos aprovacao da cotacao revista, o cliente devera efetuar o pagamento correspondente para que o trabalho possa continuar ou ser concluido.",
+  },
+  {
+    title: "Material restante",
+    text: "Todo material comprado e nao utilizado durante a execucao do servico pertence ao cliente. A equipa podera entregar o material restante ao cliente no final do trabalho, salvo acordo diferente entre as partes.",
+  },
+  {
+    title: "Validade da cotacao",
+    text: `A presente cotacao/proforma tem validade de ${proformaValidityDays} dias, contados a partir da data de emissao. Apos esse periodo, os precos poderao sofrer alteracao devido a variacao de custos de mercado, transporte, stock ou cambio.`,
+  },
+  {
+    title: "Alteracao de precos e disponibilidade",
+    text: "Os precos e a disponibilidade dos materiais podem variar conforme fornecedor, marca, modelo, quantidade e local de aquisicao. Caso algum material cotado nao esteja disponivel, podera ser sugerido material equivalente mediante aprovacao do cliente.",
+  },
+  {
+    title: "Escopo do servico",
+    text: "A cotacao cobre apenas os materiais e servicos descritos neste documento. Servicos nao mencionados, alteracoes na estrutura do local, deslocacoes adicionais, mudancas solicitadas pelo cliente ou trabalhos extras poderao gerar custos adicionais.",
+  },
+  {
+    title: "Responsabilidade do cliente",
+    text: "O cliente deve garantir acesso ao local de trabalho, disponibilidade para aprovacao de alteracoes e condicoes minimas para execucao. Atrasos por falta de acesso, pagamento, mudanca de decisao ou ausencia de aprovacao poderao afetar o prazo de entrega.",
+  },
+  {
+    title: "Garantia",
+    text: "A garantia cobre apenas equipamentos e servicos fornecidos pela empresa, conforme condicoes do fornecedor e/ou acordo estabelecido. Nao cobre danos por mau uso, energia, descargas eletricas, terceiros, vandalismo, humidade ou alteracoes sem autorizacao.",
+  },
+  {
+    title: "Cancelamento ou desistencia",
+    text: "Em caso de cancelamento pelo cliente apos a compra dos materiais, os materiais adquiridos serao entregues ao cliente. Transporte, mao de obra executada, deslocacao ou outros custos ja realizados poderao nao ser reembolsaveis.",
+  },
+  {
+    title: "Confirmacao e aceitacao",
+    text: "Ao aprovar esta cotacao/proforma, o cliente declara que leu, compreendeu e aceita os materiais, valores, condicoes de pagamento e politicas descritas. A execucao so inicia apos aprovacao da cotacao e pagamento acordado.",
+  },
+];
+
 type ProformaPdfRow = {
   description: string;
   quantity: string;
@@ -192,7 +246,9 @@ const drawPdfRect = (x: number, y: number, width: number, height: number) =>
 
 const createProformaPdfBlob = (data: ProformaPdfData) => {
   const rowsPerPage = 12;
-  const pages = Math.max(1, Math.ceil(data.rows.length / rowsPerPage));
+  const quotePages = Math.max(1, Math.ceil(data.rows.length / rowsPerPage));
+  const policyPages = 2;
+  const pages = quotePages + policyPages;
   const objects: string[] = [];
 
   objects.push("<< /Type /Catalog /Pages 2 0 R >>");
@@ -209,12 +265,24 @@ const createProformaPdfBlob = (data: ProformaPdfData) => {
   for (let page = 0; page < pages; page += 1) {
     const pageObjectId = 5 + page * 2;
     const contentObjectId = pageObjectId + 1;
+    const isPolicyPage = page >= quotePages;
     const pageRows = data.rows.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
-    const commands: string[] = [
+    const commands: string[] = isPolicyPage
+      ? [
+          "0.8 w",
+          "0.02 0.18 0.36 RG",
+          "0.02 0.18 0.36 rg",
+          drawPdfText(40, 790, 18, "Politica da Factura Proforma / Cotacao", "F2"),
+          drawPdfText(40, 770, 9, `Cotacao No.: ${data.number}`),
+          drawPdfLine(40, 754, 555, 754),
+        ]
+      : [
       "0.8 w",
       "0.02 0.18 0.36 RG",
       "0.02 0.18 0.36 rg",
-      drawPdfText(82, 785, 30, "Bitoll", "F2"),
+      drawPdfText(86, 785, 30, "Bitoll", "F2"),
+      "0.07 0.60 0.84 rg",
+      drawPdfText(88, 765, 11, "Seguranca & Tecnologia", "F2"),
       "0.07 0.45 0.82 RG",
       drawPdfLine(40, 782, 62, 782),
       drawPdfLine(40, 770, 72, 770),
@@ -226,7 +294,7 @@ const createProformaPdfBlob = (data: ProformaPdfData) => {
       "0 0 0 RG",
       "0 0 0 rg",
       drawPdfText(360, 786, 22, "Factura Pro-forma", "F2"),
-      drawPdfText(458, 762, 12, `No ${data.number}`, "F2"),
+      drawPdfText(458, 762, 12, `No.: ${data.number}`, "F2"),
       drawPdfLine(40, 736, 555, 736),
       drawPdfText(40, 714, 11, "Cidade de Tete"),
       drawPdfText(40, 700, 11, "Cidade de Chimoio"),
@@ -246,47 +314,97 @@ const createProformaPdfBlob = (data: ProformaPdfData) => {
       drawPdfLine(40, 596, 555, 596),
     ];
 
-    let y = 574;
-    pageRows.forEach((row) => {
-      const descriptionLines = wrapPdfText(row.description, 48, 2);
-      const rowHeight = Math.max(26, descriptionLines.length * 12 + 10);
+    if (isPolicyPage) {
+      const policyStart = (page - quotePages) * 6;
+      const policySections = proformaPolicySections.slice(
+        policyStart,
+        policyStart + 6,
+      );
+      let policyY = 728;
 
-      descriptionLines.forEach((line, lineIndex) => {
-        commands.push(drawPdfText(40, y - lineIndex * 12, 9, line));
+      policySections.forEach((section, index) => {
+        commands.push(
+          drawPdfText(
+            40,
+            policyY,
+            10,
+            `${policyStart + index + 1}. ${section.title}`,
+            "F2",
+          ),
+        );
+        policyY -= 14;
+
+        wrapPdfText(section.text, 96, 5).forEach((line) => {
+          commands.push(drawPdfText(40, policyY, 8, line));
+          policyY -= 11;
+        });
+
+        policyY -= 10;
       });
-      commands.push(
-        drawPdfText(370, y, 9, row.quantity),
-        drawPdfText(416, y, 9, row.unitPrice),
-        drawPdfText(507, y, 9, row.total),
-      );
 
-      y -= rowHeight;
-    });
-
-    if (page === pages - 1) {
-      const discountDisplay = data.discount.startsWith("0") ? "-" : `-${data.discount}`;
-
-      commands.push(
-        drawPdfRect(388, 136, 167, 104),
-        drawPdfText(396, 222, 10, "Artigos/base estrutura", "F2"),
-        drawPdfText(480, 222, 10, data.subtotal),
-        drawPdfText(396, 202, 9, data.structureCostLabel, "F2"),
-        drawPdfText(480, 202, 10, data.structureCost),
-        drawPdfText(396, 182, 10, "IVA 12%", "F2"),
-        drawPdfText(480, 182, 10, data.iva),
-        drawPdfText(396, 162, 10, "Desconto", "F2"),
-        drawPdfText(480, 162, 10, discountDisplay),
-        drawPdfLine(388, 156, 555, 156),
-        drawPdfText(396, 142, 12, "Total", "F2"),
-        drawPdfText(480, 142, 12, data.total, "F2"),
-        drawPdfText(40, 102, 8, "Observacao: valores sujeitos a confirmacao tecnica no local."),
-        drawPdfText(40, 88, 8, "Obrigado pela preferencia. Bitoll - seguranca e tecnologia."),
-      );
+      if (page === pages - 1) {
+        commands.push(
+          drawPdfLine(40, 102, 555, 102),
+          drawPdfText(
+            40,
+            82,
+            8,
+            "Confirmacao: ao aprovar esta cotacao/proforma, o cliente declara que leu e aceita estas politicas.",
+          ),
+          drawPdfText(40, 58, 8, "Assinatura do cliente: ______________________________"),
+          drawPdfText(340, 58, 8, "Data: ____/____/________"),
+        );
+      }
     } else {
-      commands.push(drawPdfText(470, 44, 8, `Pagina ${page + 1}/${pages}`));
+      let y = 574;
+      pageRows.forEach((row) => {
+        const descriptionLines = wrapPdfText(row.description, 48, 2);
+        const rowHeight = Math.max(26, descriptionLines.length * 12 + 10);
+
+        descriptionLines.forEach((line, lineIndex) => {
+          commands.push(drawPdfText(40, y - lineIndex * 12, 9, line));
+        });
+        commands.push(
+          drawPdfText(370, y, 9, row.quantity),
+          drawPdfText(416, y, 9, row.unitPrice),
+          drawPdfText(507, y, 9, row.total),
+        );
+
+        y -= rowHeight;
+      });
+
+      if (page === quotePages - 1) {
+        const discountDisplay = data.discount.startsWith("0") ? "-" : `-${data.discount}`;
+
+        commands.push(
+          drawPdfRect(388, 136, 167, 104),
+          drawPdfText(396, 222, 10, "Artigos/base estrutura", "F2"),
+          drawPdfText(480, 222, 10, data.subtotal),
+          drawPdfText(396, 202, 9, data.structureCostLabel, "F2"),
+          drawPdfText(480, 202, 10, data.structureCost),
+          drawPdfText(396, 182, 10, "IVA 12%", "F2"),
+          drawPdfText(480, 182, 10, data.iva),
+          drawPdfText(396, 162, 10, "Desconto", "F2"),
+          drawPdfText(480, 162, 10, discountDisplay),
+          drawPdfLine(388, 156, 555, 156),
+          drawPdfText(396, 142, 12, "Total", "F2"),
+          drawPdfText(480, 142, 12, data.total, "F2"),
+          drawPdfText(40, 102, 8, "Observacao: valores sujeitos a confirmacao tecnica no local."),
+          drawPdfText(40, 88, 8, "Politicas da cotacao/proforma nas paginas seguintes."),
+        );
+      } else {
+        commands.push(drawPdfText(470, 44, 8, `Pagina ${page + 1}/${pages}`));
+      }
     }
 
-    commands.push(drawPdfText(470, 30, 8, `Pagina ${page + 1}/${pages}`));
+    commands.push(
+      drawPdfText(
+        470,
+        30,
+        8,
+        `Pagina ${page + 1}/${pages}`,
+      ),
+    );
 
     const stream = commands.join("\n");
     objects.push(
@@ -422,6 +540,8 @@ export default component$<QuoteRequestFormProps>(
     const quoteOperationTitle = useSignal("");
     const quoteOperationMessage = useSignal("");
     const quoteShouldDownloadPdf = useSignal(false);
+    const proformaPolicyOpen = useSignal(false);
+    const proformaPolicyAccepted = useSignal(false);
     const selectedService = useSignal(initialData.service ?? "outro");
     const defaultPerimeter =
       initialData.structureType === "alta"
@@ -521,13 +641,7 @@ export default component$<QuoteRequestFormProps>(
       }
 
       const quoteDate = new Date();
-      const quoteProformaNumber = `${String(quoteDate.getMonth() + 1).padStart(
-        2,
-        "0",
-      )}${String(quoteDate.getDate()).padStart(
-        2,
-        "0",
-      )}/${quoteDate.getFullYear()}`;
+      const quoteProformaNumber = getProformaNumber(quoteDate);
       const quoteNumber = `BTL-${quoteProformaNumber}-${Date.now()}`;
       const quoteCurrency = initialData.currency ?? "MZN";
       const quoteServiceSubtotal = articles.value.reduce(
@@ -575,7 +689,7 @@ export default component$<QuoteRequestFormProps>(
           labor_total: laborTotal,
           total: quoteTotal,
           currency: quoteCurrency,
-          status: "enviado",
+          status: "em_processamento",
         })
         .select("id")
         .single();
@@ -622,10 +736,7 @@ export default component$<QuoteRequestFormProps>(
       const pdfToday = new Date();
       const pdfDueDate = new Date(pdfToday);
       pdfDueDate.setDate(pdfToday.getDate() + 30);
-      const pdfProformaNumber = `${String(pdfToday.getMonth() + 1).padStart(
-        2,
-        "0",
-      )}${String(pdfToday.getDate()).padStart(2, "0")}/${pdfToday.getFullYear()}`;
+      const pdfProformaNumber = getProformaNumber(pdfToday);
 
       const pdfBlob = createProformaPdfBlob({
         number: pdfProformaNumber,
@@ -1016,9 +1127,7 @@ export default component$<QuoteRequestFormProps>(
     const today = new Date();
     const dueDate = new Date(today);
     dueDate.setDate(today.getDate() + 30);
-    const proformaNumber = `${String(today.getMonth() + 1).padStart(2, "0")}${String(
-      today.getDate(),
-    ).padStart(2, "0")}/${today.getFullYear()}`;
+    const proformaNumber = getProformaNumber(today);
     const isFenceService = selectedService.value === "vedacao-eletrica";
     const isCctvService =
       selectedService.value === "cctv" ||
@@ -1046,6 +1155,15 @@ export default component$<QuoteRequestFormProps>(
         class="mt-7 space-y-5"
         onSubmit$={async () => {
           if (quoteOperationActive.value) {
+            return;
+          }
+
+          if (!proformaPolicyAccepted.value) {
+            proformaPolicyOpen.value = true;
+            showToast(
+              "Politica da proforma",
+              "Leia as politicas da cotacao/proforma e confirme a aceitacao antes de enviar.",
+            );
             return;
           }
 
@@ -2034,11 +2152,18 @@ export default component$<QuoteRequestFormProps>(
           <div class="rounded-3xl border border-slate-800 bg-white p-5 text-slate-950 shadow-2xl print:rounded-none print:border-0 print:shadow-none">
             <div class="flex flex-wrap items-start justify-between gap-6 border-b border-slate-300 pb-5">
               <div>
+                <img
+                  src="/brand/bitoll-seguranca-tecnologia.svg"
+                  width={240}
+                  height={70}
+                  alt="Bitoll Seguranca & Tecnologia"
+                  class="mb-4 h-auto w-56"
+                />
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                   Factura Pro-forma
                 </p>
                 <h3 class="mt-1 text-2xl font-black text-slate-950">
-                  No {proformaNumber}
+                  No.: {proformaNumber}
                 </h3>
                 <p class="mt-3 text-sm leading-6 text-slate-600">
                   Cidade de Tete
@@ -2135,6 +2260,22 @@ export default component$<QuoteRequestFormProps>(
               </div>
             </div>
 
+            <div class="mt-6 border-t border-slate-300 pt-5">
+              <h4 class="text-sm font-black uppercase tracking-[0.14em] text-slate-700">
+                Politica da factura proforma / cotacao
+              </h4>
+              <div class="mt-3 grid gap-3 text-xs leading-5 text-slate-700 md:grid-cols-2">
+                {proformaPolicySections.map((section, index) => (
+                  <div key={`preview-policy-${section.title}`}>
+                    <p class="font-black text-slate-950">
+                      {index + 1}. {section.title}
+                    </p>
+                    <p class="mt-1">{section.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div class="mt-5 flex flex-wrap gap-3 print:hidden">
               <Button
                 type="button"
@@ -2185,6 +2326,61 @@ export default component$<QuoteRequestFormProps>(
           Autorizo a Bitoll a entrar em contacto para responder a este
           pedido de orcamento.
         </label>
+
+        <div class="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Politica da factura proforma / cotacao
+              </p>
+              <p class="mt-1 text-sm leading-6 text-slate-300">
+                Antes de enviar, leia as condicoes sobre materiais, revisao da
+                cotacao, validade, garantia e aceitacao.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              class="rounded-2xl border border-cyan-400/40 px-4 py-3 text-sm font-bold text-cyan-100 transition hover:bg-cyan-400/10"
+              onClick$={() => {
+                proformaPolicyOpen.value = !proformaPolicyOpen.value;
+              }}
+            >
+              {proformaPolicyOpen.value ? "Ocultar politicas" : "Ver politicas"}
+            </button>
+          </div>
+
+          {proformaPolicyOpen.value && (
+            <div class="mt-4 max-h-96 space-y-3 overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950 p-4">
+              {proformaPolicySections.map((section, index) => (
+                <section key={`policy-${section.title}`}>
+                  <h4 class="text-sm font-black text-white">
+                    {index + 1}. {section.title}
+                  </h4>
+                  <p class="mt-1 text-sm leading-6 text-slate-400">
+                    {section.text}
+                  </p>
+                </section>
+              ))}
+            </div>
+          )}
+
+          <label class="mt-4 flex items-start gap-3 text-sm leading-6 text-slate-300">
+            <input
+              type="checkbox"
+              name="acceptProformaPolicy"
+              required
+              checked={proformaPolicyAccepted.value}
+              class="mt-1 h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-400"
+              onChange$={(event) => {
+                proformaPolicyAccepted.value = (
+                  event.target as HTMLInputElement
+                ).checked;
+              }}
+            />
+            Li, compreendi e aceito a politica da factura proforma/cotacao.
+          </label>
+        </div>
 
         <div class="grid gap-3 sm:grid-cols-2">
           <Button

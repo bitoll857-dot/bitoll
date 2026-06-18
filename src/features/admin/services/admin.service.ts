@@ -11,8 +11,10 @@ import type {
   AdminTemplateField,
   AdminTemplateItem,
   AdminTemplateRule,
+  AdminUserProfile,
   OperatorQuoteResponse,
 } from "../types/admin.types";
+import { normalizeStructureSteps } from "../utils/admin.utils";
 
 const asStringArray = (value: unknown) =>
   Array.isArray(value)
@@ -77,30 +79,87 @@ export const loadOperatorQuotes = async () => {
   const { data, error } = await supabase
     .from("quotes")
     .select(
-      "id,quote_number,service_slug,status,total,currency,created_at,request_payload,progress,next_step,technician,technician_id,estimated_completion,updates,profiles(full_name,email,phone,city)",
+      "id,profile_id,quote_number,service_slug,status,total,labor_total,currency,created_at,request_payload,customer_snapshot,progress,next_step,technician,technician_id,estimated_completion,updates",
     )
     .in("status", [
       "aprovado",
+      "em_atividade",
       "em_avaliacao",
       "em_instalacao",
+      "em_processamento",
       "em_testes",
       "concluido",
       "enviado",
+      "finalizado",
+      "reclamacao",
     ])
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(200);
 
   if (error || !data) {
     return [];
   }
 
-  return (data as unknown as OperatorQuoteResponse[]).map((quote) => ({
-    ...quote,
-    profiles: Array.isArray(quote.profiles)
-      ? quote.profiles[0] ?? null
-      : quote.profiles,
-    updates: asStringArray(quote.updates),
-  }));
+  const quotes = data as unknown as OperatorQuoteResponse[];
+  const profileIds = [
+    ...new Set(
+      quotes
+        .map((quote) => quote.profile_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const profilesById = new Map<
+    string,
+    NonNullable<OperatorQuoteResponse["profiles"]>
+  >();
+
+  if (profileIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id,full_name,email,phone,city")
+      .in("id", profileIds);
+
+    (profiles ?? []).forEach((profile) => {
+      profilesById.set(profile.id, profile);
+    });
+  }
+
+  return quotes.map((quote) => {
+    const snapshot =
+      quote.customer_snapshot && typeof quote.customer_snapshot === "object"
+        ? (quote.customer_snapshot as Record<string, unknown>)
+        : {};
+    const isCustomQuote = quote.request_payload?.source === "custom_quote";
+    const profile = quote.profile_id ? profilesById.get(quote.profile_id) : null;
+    const snapshotProfile = {
+      city:
+        typeof snapshot.city === "string"
+          ? snapshot.city
+          : typeof snapshot.address === "string"
+            ? snapshot.address
+            : null,
+      email: typeof snapshot.email === "string" ? snapshot.email : null,
+      full_name: typeof snapshot.name === "string" ? snapshot.name : null,
+      phone:
+        typeof snapshot.contacto === "string"
+          ? snapshot.contacto
+          : typeof snapshot.contact === "string"
+            ? snapshot.contact
+            : typeof snapshot.phone === "string"
+              ? snapshot.phone
+              : null,
+    };
+
+    return {
+      ...quote,
+      profiles: isCustomQuote
+        ? snapshotProfile
+        : quote.profile_id
+          ? profile ?? snapshotProfile
+          : snapshotProfile,
+      updates: asStringArray(quote.updates),
+    };
+  });
 };
 
 export const loadOwnerContent = async () => {
@@ -110,6 +169,7 @@ export const loadOwnerContent = async () => {
     return {
       customers: [],
       customQuotes: [],
+      adminUsers: [],
       operators: [],
       products: [],
       promotions: [],
@@ -133,6 +193,7 @@ export const loadOwnerContent = async () => {
     promotions,
     customers,
     customQuotes,
+    adminUsers,
     operators,
   ] = await Promise.all([
     supabase
@@ -144,7 +205,7 @@ export const loadOwnerContent = async () => {
 
     supabase
       .from("service_products")
-      .select("id,service_slug,structure,name,unit,unit_price,brand,category,image_url,active")
+      .select("id,service_slug,structure,name,short_name,unit,unit_price,brand,category,image_url,active")
       .order("created_at", { ascending: false })
       .limit(120),
 
@@ -184,28 +245,74 @@ export const loadOwnerContent = async () => {
 
     supabase
       .from("profiles")
-      .select("id,full_name,email,phone,city")
+      .select("id,full_name,email,phone,city,status")
       .order("created_at", { ascending: false })
       .limit(80),
 
     supabase
       .from("custom_quotes")
       .select(
-        "id,quote_number,customer_name,customer_contact,customer_address,customer_nuit,customer_type,service_slug,subtotal,total,currency,status,notes,selected_items,created_at",
+        "id,profile_id,quote_number,customer_name,customer_contact,customer_address,customer_nuit,customer_type,service_slug,structure,source_quote_template_id,subtotal,total,currency,status,notes,commitment_terms,selected_items,created_at",
       )
       .order("created_at", { ascending: false })
       .limit(80),
 
     supabase
       .from("admin_users")
-      .select("role,profiles(id,full_name,email,phone)")
+      .select("role,active,profiles(id,full_name,email,phone,city,status)"),
+
+    supabase
+      .from("admin_users")
+      .select("role,active,profiles(id,full_name,email,phone)")
       .eq("role", "operador"),
   ]);
 
   return {
+    adminUsers: ((adminUsers.data ?? []) as {
+      active: boolean;
+      profiles:
+        | {
+            city: string | null;
+            email: string | null;
+            full_name: string | null;
+            id: string;
+            phone: string | null;
+            status: string | null;
+          }
+        | {
+            city: string | null;
+            email: string | null;
+            full_name: string | null;
+            id: string;
+            phone: string | null;
+            status: string | null;
+          }[]
+        | null;
+      role: "owner" | "admin" | "operador";
+    }[])
+      .map((adminUser) => {
+        const profile = Array.isArray(adminUser.profiles)
+          ? adminUser.profiles[0] ?? null
+          : adminUser.profiles;
+
+        return profile
+          ? {
+              adminActive: adminUser.active,
+              adminRole: adminUser.role,
+              city: profile.city,
+              email: profile.email,
+              full_name: profile.full_name,
+              id: profile.id,
+              phone: profile.phone,
+              status: profile.status,
+            }
+          : null;
+      })
+      .filter(Boolean) as AdminUserProfile[],
     customers: customers.data ?? [],
     customQuotes: (customQuotes.data ?? []) as AdminCustomQuote[],
     operators: ((operators.data ?? []) as {
+      active: boolean;
       profiles:
         | {
             email: string | null;
@@ -220,28 +327,33 @@ export const loadOwnerContent = async () => {
             phone: string | null;
           }[]
         | null;
-      role: "operador";
+      role: "owner" | "admin" | "operador";
     }[])
       .map((operator) => {
         const profile = Array.isArray(operator.profiles)
           ? operator.profiles[0] ?? null
           : operator.profiles;
 
-        return profile
+        return profile && operator.active && operator.role === "operador"
           ? {
               email: profile.email,
               full_name: profile.full_name,
               id: profile.id,
               phone: profile.phone,
-              role: "operador" as const,
+              role: operator.role,
             }
           : null;
       })
-      .filter((operator): operator is AdminOperatorUser => Boolean(operator)),
+      .filter(Boolean) as AdminOperatorUser[],
     products: (products.data ?? []) as AdminProduct[],
     promotions: (promotions.data ?? []) as AdminPromotion[],
     services: (services.data ?? []) as AdminService[],
-    structureOptions: (structureOptions.data ?? []) as AdminStructureOption[],
+    structureOptions: ((structureOptions.data ?? []) as AdminStructureOption[]).map(
+      (option) => ({
+        ...option,
+        steps: normalizeStructureSteps(option.steps),
+      }),
+    ),
     templateFields: (templateFields.data ?? []) as AdminTemplateField[],
     templateItems: (templateItems.data ?? []) as AdminTemplateItem[],
     templateRules: (templateRules.data ?? []) as AdminTemplateRule[],

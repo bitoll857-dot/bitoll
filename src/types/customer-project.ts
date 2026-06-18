@@ -1,10 +1,9 @@
 export type ProjectStatus =
-  | "Por proceder"
-  | "Solicitado"
-  | "Em avaliacao"
-  | "Em instalacao"
-  | "Em testes"
-  | "Concluido";
+  | "Em processamento"
+  | "Em actividade"
+  | "Reclamacao"
+  | "Recusado"
+  | "Finalizado";
 
 export interface CustomerProject {
   id: string;

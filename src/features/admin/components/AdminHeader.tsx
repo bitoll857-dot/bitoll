@@ -1,10 +1,14 @@
-import { component$ } from "@builder.io/qwik";
+import { component$, type PropFunction } from "@builder.io/qwik";
+
+import type { OwnerTab } from "../types/admin.types";
 
 type Props = {
+  activeTab?: OwnerTab;
+  onTabChange$?: PropFunction<(tab: OwnerTab) => void>;
   role: string | null;
 };
 
-export const AdminHeader = component$<Props>(({ role }) => {
+export const AdminHeader = component$<Props>(({ activeTab, onTabChange$, role }) => {
   const roleLabel = role === "operador" ? "Operador" : "Owner";
   const title =
     role === "operador" ? "Operacao e acompanhamento" : "Gestao da plataforma";
@@ -40,12 +44,40 @@ export const AdminHeader = component$<Props>(({ role }) => {
               </div>
             </div>
 
-            <div class="hidden min-w-0 items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-2.5 backdrop-blur-xl md:flex">
-              <span class="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.55)]" />
-              <span class="truncate text-sm font-bold text-slate-200">
-                Ambiente administrativo
-              </span>
-            </div>
+            {role !== "operador" ? (
+              <nav class="hidden min-w-0 items-center gap-2 md:flex">
+                {(
+                  [
+                    { label: "Geral", value: "services" },
+                    { label: "Receitas", value: "revenues" },
+                    { label: "Usuarios", value: "users" },
+                  ] as const
+                ).map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    class={[
+                      "rounded-2xl border px-4 py-2.5 text-sm font-bold backdrop-blur-xl transition",
+                      (item.value === "services"
+                        ? activeTab !== "users" && activeTab !== "revenues"
+                        : activeTab === item.value)
+                        ? "border-cyan-400/40 bg-cyan-400 text-slate-950"
+                        : "border-slate-800 bg-slate-900/70 text-slate-200 hover:border-cyan-400/40",
+                    ]}
+                    onClick$={() => onTabChange$?.(item.value)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+            ) : (
+              <div class="hidden min-w-0 items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-2.5 backdrop-blur-xl md:flex">
+                <span class="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.55)]" />
+                <span class="truncate text-sm font-bold text-slate-200">
+                  Ambiente administrativo
+                </span>
+              </div>
+            )}
 
             <div class="flex shrink-0 items-center gap-3">
               <span class="hidden rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-2.5 text-sm font-bold text-slate-300 backdrop-blur-xl lg:inline-flex">

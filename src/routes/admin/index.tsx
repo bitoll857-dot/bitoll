@@ -1,4 +1,4 @@
-import { component$ } from "@builder.io/qwik";
+import { $, component$ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 
 import { AdminHeader } from "~/features/admin/components/AdminHeader";
@@ -8,9 +8,14 @@ import { DetailsModal } from "~/features/admin/components/DetailsModal";
 import { OwnerTabs } from "~/features/admin/components/OwnerTabs";
 import { OperatorQuotesPanel } from "~/features/admin/components/OperatorQuotesPanel";
 import { useAdminPanel } from "~/features/admin/hooks/useAdminPanel";
+import type { OwnerTab } from "~/features/admin/types/admin.types";
 
 export default component$(() => {
   const admin = useAdminPanel();
+  const openOwnerHeaderTab$ = $((tab: OwnerTab) => {
+    admin.ownerTab.value = tab;
+    admin.showOwnerForm.value = false;
+  });
 
   return (
     <main class="min-h-screen bg-slate-950 px-4 pb-8 pt-24 text-white sm:px-6">
@@ -43,7 +48,11 @@ export default component$(() => {
       )}
 
       <section class="mx-auto w-full max-w-6xl">
-        <AdminHeader role={admin.adminAccess.value.role} />
+        <AdminHeader
+          activeTab={admin.ownerTab.value}
+          role={admin.adminAccess.value.role}
+          onTabChange$={openOwnerHeaderTab$}
+        />
 
         {admin.isLoading.value && (
           <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-300">

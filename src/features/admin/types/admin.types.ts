@@ -7,10 +7,13 @@ export type AdminMetric = {
 
 export type OperatorQuote = {
   id: string;
+  customer_snapshot: Record<string, unknown> | null;
+  profile_id: string | null;
   quote_number: string;
   service_slug: string | null;
   status: string;
   total: number | string;
+  labor_total?: number | string;
   currency: string;
   created_at: string;
   progress: number | string;
@@ -29,10 +32,7 @@ export type OperatorQuote = {
 };
 
 export type OperatorQuoteResponse = Omit<OperatorQuote, "profiles"> & {
-  profiles:
-    | OperatorQuote["profiles"]
-    | NonNullable<OperatorQuote["profiles"]>[]
-    | null;
+  profiles: OperatorQuote["profiles"];
   updates: unknown;
 };
 
@@ -43,6 +43,12 @@ export type OperatorDraft = {
   status: ProjectStatus;
   technician: string;
   updatesText: string;
+};
+
+export type AdminProcedureStep = {
+  checked: boolean;
+  day: number;
+  label: string;
 };
 
 export type AdminService = {
@@ -62,6 +68,7 @@ export type AdminProduct = {
   id: string;
   image_url: string;
   name: string;
+  short_name?: string;
   service_slug: string;
   structure: string;
   unit: string;
@@ -74,6 +81,7 @@ export type AdminCustomer = {
   full_name: string | null;
   id: string;
   phone: string | null;
+  status?: string | null;
 };
 
 export type AdminOperatorUser = {
@@ -81,15 +89,29 @@ export type AdminOperatorUser = {
   full_name: string | null;
   id: string;
   phone: string | null;
-  role: "operador";
+  role: "owner" | "admin" | "operador";
+};
+
+export type AdminUserProfile = {
+  adminActive: boolean;
+  adminRole: "owner" | "admin" | "operador" | "";
+  city: string | null;
+  email: string | null;
+  full_name: string | null;
+  id: string;
+  phone: string | null;
+  status: string | null;
 };
 
 export type CustomQuoteDraftItem = {
   category: string;
   id: string;
   imageUrl: string;
+  linkedBaseItemId?: string;
   name: string;
+  productId: string | null;
   quantity: number;
+  shortName?: string;
   serviceSlug: string;
   structure: string;
   unit: string;
@@ -105,11 +127,15 @@ export type AdminCustomQuote = {
   customer_nuit: string;
   customer_type: string;
   id: string;
+  commitment_terms: string;
   notes: string;
+  profile_id: string | null;
   quote_number: string;
   selected_items: CustomQuoteDraftItem[];
   service_slug: string | null;
+  source_quote_template_id: string | null;
   status: string;
+  structure: string | null;
   subtotal: number | string;
   total: number | string;
 };
@@ -162,6 +188,11 @@ export type AdminTemplateItem = {
   unit_price: number | string;
 };
 
+export type AdminStructureStep = {
+  day: number;
+  label: string;
+};
+
 export type AdminStructureOption = {
   active: boolean;
   description: string;
@@ -169,7 +200,7 @@ export type AdminStructureOption = {
   image_url: string;
   service_slug: string;
   sort_order: number | string;
-  steps: string[];
+  steps: AdminStructureStep[];
   structure: string;
   structure_cost_percentage: number | string;
   title: string;
@@ -191,6 +222,9 @@ export type AdminTemplateRule = {
 };
 
 export type OwnerTab =
+  | "users"
+  | "revenues"
+  | "operations"
   | "services"
   | "structures"
   | "products"

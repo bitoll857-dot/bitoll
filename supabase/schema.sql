@@ -23,9 +23,14 @@ create table if not exists public.profiles (
   preferred_contact_method text not null default 'WhatsApp',
   status text not null default 'Conta ativa',
   verified boolean not null default false,
+  must_change_password boolean not null default false,
+  temporary_password_set_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists must_change_password boolean not null default false;
+alter table public.profiles add column if not exists temporary_password_set_at timestamptz;
 
 create unique index if not exists profiles_phone_unique
 on public.profiles (phone)
@@ -81,6 +86,7 @@ create table if not exists public.service_products (
   service_slug text not null references public.services(slug) on delete cascade,
   structure text not null default 'media',
   name text not null,
+  short_name text not null default '',
   unit text not null default 'Un',
   quantity_label text not null default '',
   estimated_quantity numeric not null default 0,
@@ -254,11 +260,14 @@ create table if not exists public.custom_quotes (
   customer_nuit text not null default '',
   customer_type text not null default 'Cliente temporario',
   service_slug text references public.services(slug) on delete set null,
+  structure text,
+  source_quote_template_id uuid references public.service_quote_templates(id) on delete set null,
   subtotal numeric not null default 0,
   total numeric not null default 0,
   currency text not null default 'MZN',
   status text not null default 'rascunho',
   notes text not null default '',
+  commitment_terms text not null default '',
   selected_items jsonb not null default '[]'::jsonb,
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
@@ -371,6 +380,20 @@ as $$
   limit 1;
 $$;
 
+create or replace function public.current_admin_role()
+returns text
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select admin_users.role
+  from public.admin_users
+  where admin_users.user_id = auth.uid()
+    and admin_users.active = true
+  limit 1;
+$$;
+
 create or replace function public.can_manage_content()
 returns boolean
 language sql
@@ -397,6 +420,7 @@ alter table public.services add column if not exists experience text not null de
 alter table public.services add column if not exists sort_order integer not null default 0;
 
 alter table public.service_products add column if not exists brand text not null default '';
+alter table public.service_products add column if not exists short_name text not null default '';
 alter table public.service_products add column if not exists model text not null default '';
 alter table public.service_products add column if not exists system text not null default '';
 alter table public.service_products add column if not exists category text not null default '';
@@ -451,8 +475,16 @@ alter table public.quotes alter column progress drop default;
 alter table public.quotes alter column next_step set default '';
 alter table public.quotes alter column technician set default '';
 
+alter table public.custom_quotes add column if not exists source_quote_template_id uuid references public.service_quote_templates(id) on delete set null;
+alter table public.custom_quotes add column if not exists commitment_terms text not null default '';
+alter table public.custom_quotes add column if not exists structure text;
+
 insert into storage.buckets (id, name, public)
 values ('bitoll-images', 'bitoll-images', true)
+on conflict (id) do update set public = true;
+
+insert into storage.buckets (id, name, public)
+values ('bitoll-documents', 'bitoll-documents', true)
 on conflict (id) do update set public = true;
 
 create unique index if not exists promotions_slug_unique
@@ -568,6 +600,22 @@ drop policy if exists "Admins can view admin users" on public.admin_users;
 create policy "Admins can view admin users"
 on public.admin_users for select
 using (public.is_admin());
+
+drop policy if exists "Owners can create admin users" on public.admin_users;
+create policy "Owners can create admin users"
+on public.admin_users for insert
+with check (public.current_admin_role() = 'owner');
+
+drop policy if exists "Owners can update admin users" on public.admin_users;
+create policy "Owners can update admin users"
+on public.admin_users for update
+using (public.current_admin_role() = 'owner')
+with check (public.current_admin_role() = 'owner');
+
+drop policy if exists "Owners can delete admin users" on public.admin_users;
+create policy "Owners can delete admin users"
+on public.admin_users for delete
+using (public.current_admin_role() = 'owner');
 
 drop policy if exists "Active services are public" on public.services;
 create policy "Active services are public"
@@ -847,6 +895,31 @@ with check (
   and public.can_manage_content()
 );
 
+drop policy if exists "Bitoll documents are public" on storage.objects;
+create policy "Bitoll documents are public"
+on storage.objects for select
+using (bucket_id = 'bitoll-documents');
+
+drop policy if exists "Content managers can upload bitoll documents" on storage.objects;
+create policy "Content managers can upload bitoll documents"
+on storage.objects for insert
+with check (
+  bucket_id = 'bitoll-documents'
+  and public.can_manage_content()
+);
+
+drop policy if exists "Content managers can update bitoll documents" on storage.objects;
+create policy "Content managers can update bitoll documents"
+on storage.objects for update
+using (
+  bucket_id = 'bitoll-documents'
+  and public.can_manage_content()
+)
+with check (
+  bucket_id = 'bitoll-documents'
+  and public.can_manage_content()
+);
+
 drop policy if exists "Admins can view profiles" on public.profiles;
 create policy "Admins can view profiles"
 on public.profiles for select
@@ -893,6 +966,11 @@ create policy "Quotes can be created by their owner"
 on public.quotes for insert
 with check (profile_id = auth.uid());
 
+drop policy if exists "Admins can create quotes" on public.quotes;
+create policy "Admins can create quotes"
+on public.quotes for insert
+with check (public.is_admin());
+
 drop policy if exists "Admins can update quotes" on public.quotes;
 create policy "Admins can update quotes"
 on public.quotes for update
@@ -928,6 +1006,11 @@ with check (
       and quotes.profile_id = auth.uid()
   )
 );
+
+drop policy if exists "Admins can create quote items" on public.quote_items;
+create policy "Admins can create quote items"
+on public.quote_items for insert
+with check (public.is_admin());
 
 drop policy if exists "Admins can manage custom quotes" on public.custom_quotes;
 create policy "Admins can manage custom quotes"
@@ -973,7 +1056,9 @@ begin
     customer_type,
     city,
     preferred_contact_method,
-    verified
+    verified,
+    must_change_password,
+    temporary_password_set_at
   )
   values (
     new.id,
@@ -992,13 +1077,21 @@ begin
     coalesce(new.raw_user_meta_data->>'customer_type', 'Particular'),
     coalesce(new.raw_user_meta_data->>'city', ''),
     coalesce(new.raw_user_meta_data->>'preferred_contact_method', 'WhatsApp'),
-    coalesce(new.email_confirmed_at is not null, false)
+    coalesce(new.email_confirmed_at is not null, false),
+    coalesce((new.raw_user_meta_data->>'must_change_password')::boolean, false),
+    case
+      when coalesce((new.raw_user_meta_data->>'must_change_password')::boolean, false)
+        then now()
+      else null
+    end
   )
   on conflict (id) do update set
     full_name = excluded.full_name,
     email = excluded.email,
     phone = excluded.phone,
     avatar_url = excluded.avatar_url,
+    must_change_password = excluded.must_change_password,
+    temporary_password_set_at = excluded.temporary_password_set_at,
     updated_at = now();
 
   return new;

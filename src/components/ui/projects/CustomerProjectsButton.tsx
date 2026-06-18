@@ -7,7 +7,10 @@ import {
 } from "@builder.io/qwik";
 
 import Button from "../button/Button";
-import { getCachedAuthUser } from "~/lib/supabase/client";
+import {
+  getCachedAuthUser,
+  getSupabaseBrowserClient,
+} from "~/lib/supabase/client";
 import {
   loadCustomerProjectsFromSupabase,
   loadPromotionsFromSupabase,
@@ -430,6 +433,11 @@ const ActionIcon = component$<{ mode: PanelMode }>(({ mode }) => {
 
 const ProjectCard = component$<{ project: CustomerProject }>(({ project }) => {
   const progressEnabled = project.progressEnabled ?? true;
+  const complaintOpen = useSignal(false);
+  const complaintText = useSignal("");
+  const complaintBusy = useSignal(false);
+  const complaintFeedback = useSignal("");
+  const localStatus = useSignal(project.status);
   const downloadQuotePdf = $(() => {
     const pdfBlob = createQuotePdfBlob(project);
     const url = URL.createObjectURL(pdfBlob);
@@ -458,7 +466,7 @@ const ProjectCard = component$<{ project: CustomerProject }>(({ project }) => {
         </div>
 
         <span class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-200">
-          {project.status}
+          {localStatus.value}
         </span>
       </div>
 
@@ -480,6 +488,18 @@ const ProjectCard = component$<{ project: CustomerProject }>(({ project }) => {
         >
           Baixar PDF
         </Button>
+        {localStatus.value !== "Finalizado" && (
+          <button
+            type="button"
+            class="rounded-xl border border-amber-300/40 px-4 py-3 text-sm font-bold text-amber-100 transition hover:bg-amber-400/10"
+            onClick$={() => {
+              complaintOpen.value = true;
+              complaintFeedback.value = "";
+            }}
+          >
+            Reclamar
+          </button>
+        )}
       </div>
 
       {!progressEnabled ? (
@@ -543,6 +563,115 @@ const ProjectCard = component$<{ project: CustomerProject }>(({ project }) => {
             </div>
           )}
         </>
+      )}
+
+      {complaintOpen.value && (
+        <div class="fixed inset-0 z-[390] flex items-center justify-center bg-slate-950/80 px-4 py-6 backdrop-blur-sm">
+          <div class="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-950 p-5 shadow-2xl shadow-slate-950">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-xs font-bold uppercase tracking-[0.14em] text-amber-200">
+                  Reclamar servico
+                </p>
+                <h3 class="mt-1 text-lg font-black text-white">
+                  {project.quoteNumber}
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                class="h-9 w-9 rounded-full border border-slate-700 text-sm font-black text-slate-200"
+                aria-label="Fechar reclamacao"
+                onClick$={() => {
+                  complaintOpen.value = false;
+                  complaintText.value = "";
+                }}
+              >
+                x
+              </button>
+            </div>
+
+            <label class="mt-5 block">
+              <span class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Motivo da reclamacao
+              </span>
+              <textarea
+                value={complaintText.value}
+                class="mt-2 min-h-32 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-3 text-sm text-white outline-none"
+                onInput$={(event) => {
+                  complaintText.value = (event.target as HTMLTextAreaElement).value;
+                }}
+              />
+            </label>
+
+            {complaintFeedback.value && (
+              <p class="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+                {complaintFeedback.value}
+              </p>
+            )}
+
+            <div class="mt-5 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                class="rounded-xl border border-slate-700 px-4 py-3 text-sm font-bold text-slate-200"
+                onClick$={() => {
+                  complaintOpen.value = false;
+                  complaintText.value = "";
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                class="rounded-xl bg-amber-300 px-4 py-3 text-sm font-black text-slate-950 disabled:opacity-50"
+                disabled={complaintBusy.value || !complaintText.value.trim()}
+                onClick$={$(async () => {
+                  const supabase = getSupabaseBrowserClient();
+                  const { data } = supabase
+                    ? await supabase.auth.getSession()
+                    : { data: { session: null } };
+                  const accessToken = data.session?.access_token;
+
+                  if (!accessToken) {
+                    complaintFeedback.value =
+                      "Entre novamente para registar a reclamacao.";
+                    return;
+                  }
+
+                  complaintBusy.value = true;
+                  const response = await fetch("/api/customer/quote-complaint", {
+                    body: JSON.stringify({
+                      message: complaintText.value,
+                      quoteId: project.id,
+                    }),
+                    headers: {
+                      Authorization: `Bearer ${accessToken}`,
+                      "Content-Type": "application/json",
+                    },
+                    method: "POST",
+                  });
+                  const result = (await response.json().catch(() => null)) as
+                    | { message?: string; ok?: boolean }
+                    | null;
+                  complaintBusy.value = false;
+
+                  if (!response.ok || !result?.ok) {
+                    complaintFeedback.value =
+                      result?.message ||
+                      "Nao foi possivel registar a reclamacao.";
+                    return;
+                  }
+
+                  localStatus.value = "Reclamacao";
+                  complaintOpen.value = false;
+                  complaintText.value = "";
+                })}
+              >
+                Confirmar reclamacao
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </article>
   );
@@ -625,13 +754,13 @@ export default component$(() => {
   const isOpen = !!panelMode.value;
   const visibleProjects =
     panelMode.value === "completed"
-      ? projects.value.filter((project) => project.status === "Concluido")
-      : projects.value.filter((project) => project.status !== "Concluido");
+      ? projects.value.filter((project) => project.status === "Finalizado")
+      : projects.value.filter((project) => project.status !== "Finalizado");
   const completedProjectsCount = projects.value.filter(
-    (project) => project.status === "Concluido",
+    (project) => project.status === "Finalizado",
   ).length;
   const activeProjectsCount = projects.value.filter(
-    (project) => project.status !== "Concluido",
+    (project) => project.status !== "Finalizado",
   ).length;
   const chatContext = {
     catalogs: catalogs.value,
