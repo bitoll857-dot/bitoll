@@ -42,6 +42,7 @@ const tabs: { value: OwnerTab; label: string }[] = [
   { value: "services", label: "Servicos" },
   { value: "operations", label: "Operador" },
   { value: "structures", label: "Estruturas" },
+  { value: "search", label: "Pesquisa" },
   { value: "products", label: "Artigos" },
   { value: "templates", label: "Cotacoes padrao" },
   { value: "customQuotes", label: "Cotacao personalizada" },
@@ -342,6 +343,14 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
       )
     : admin.ownerPromotions.value;
 
+  const filteredSearchSources = searchTerm
+    ? admin.ownerSearchSources.value.filter((source) =>
+        `${source.label} ${source.description} ${source.source_key}`
+          .toLowerCase()
+          .includes(searchTerm),
+      )
+    : admin.ownerSearchSources.value;
+
   const filteredQuotes = searchTerm
     ? admin.operatorQuotes.value.filter((quote) =>
         `${quote.quote_number} ${quote.service_slug ?? ""} ${
@@ -429,6 +438,7 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
     admin.ownerTab.value !== "customQuotes" &&
     admin.ownerTab.value !== "operations" &&
     admin.ownerTab.value !== "revenues" &&
+    admin.ownerTab.value !== "search" &&
     admin.ownerTab.value !== "users";
   const revenueQuotes = admin.operatorQuotes.value.filter(
     (quote) => quote.status === "finalizado" || quote.status === "concluido",
@@ -476,6 +486,11 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
 
     if (tab === "structures") {
       return admin.ownerStructureOptions.value.length;
+    }
+
+    if (tab === "search") {
+      return admin.ownerSearchSources.value.filter((source) => source.active)
+        .length;
     }
 
     if (tab === "products") {
@@ -2389,6 +2404,91 @@ export const OwnerTabs = component$<Props>(({ admin }) => {
               {filteredStructures.length === 0 && (
                 <div class="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
                   Nenhuma estrutura encontrada.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {admin.ownerTab.value === "search" && (
+          <div class="mt-5 grid gap-5">
+            <div class="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
+              <h3 class="text-sm font-black text-cyan-100">
+                O que o cliente pode pesquisar
+              </h3>
+              <p class="mt-1 text-sm leading-6 text-cyan-100/70">
+                Ative as areas que devem aparecer no campo Pesquisar. O sistema
+                busca nos dados reais: servicos, artigos, promocoes e
+                solicitacoes do proprio cliente.
+              </p>
+            </div>
+
+            <div class="md:overflow-x-auto">
+              <table
+                class={[
+                  tableClass,
+                  modeTableClass,
+                  widthClass("md:min-w-[680px]"),
+                ]}
+              >
+                <thead class={tableHeadClass}>
+                  <tr>
+                    <th class="pb-3">Fonte</th>
+                    <th class="pb-3">Como aparece na busca</th>
+                    <th class="pb-3">Estado</th>
+                    <th class="pb-3 text-right">Acoes</th>
+                  </tr>
+                </thead>
+
+                <tbody class={tableBodyClass}>
+                  {filteredSearchSources.map((source) => (
+                    <tr key={source.id} class={tableRowClass}>
+                      <td data-label="Fonte" class={tableCellClass}>
+                        <div class="text-left">
+                          <div class="font-semibold text-white">
+                            {source.label}
+                          </div>
+
+                          <div class="mt-1 text-xs uppercase tracking-[0.12em] text-cyan-300">
+                            {source.source_key}
+                          </div>
+                        </div>
+                      </td>
+
+                      <td data-label="Como aparece" class={[tableCellClass, "text-slate-300"]}>
+                        <span>{source.description}</span>
+                      </td>
+
+                      <td data-label="Estado" class={[tableCellClass, "text-slate-300"]}>
+                        {source.active ? "Permitido" : "Bloqueado"}
+                      </td>
+
+                      <td data-label="Acoes" class={tableActionCellClass}>
+                        <div class="flex flex-wrap justify-end gap-2">
+                          <button
+                            type="button"
+                            class="rounded-full border border-slate-700 px-3 py-2 text-xs font-black text-slate-200 transition hover:border-cyan-400/50 hover:bg-slate-900"
+                            onClick$={() =>
+                              admin.requestToggleContent$(
+                                "search_sources",
+                                source.id,
+                                !source.active,
+                                source.label,
+                              )
+                            }
+                          >
+                            {source.active ? "Bloquear" : "Permitir"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {filteredSearchSources.length === 0 && (
+                <div class="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
+                  Nenhuma fonte de pesquisa encontrada.
                 </div>
               )}
             </div>

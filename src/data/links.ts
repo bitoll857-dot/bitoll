@@ -11,4 +11,8 @@ export const headerLinks = [
     label: "Promocoes",
     href: "/promotions",
   },
+  {
+    label: "Ferramentas IA",
+    href: "/ferramentas/gerador-prompt-foto",
+  },
 ];

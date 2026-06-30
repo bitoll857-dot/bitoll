@@ -48,6 +48,13 @@ export default component$<Props>(
                 Pesquisa global
               </h2>
 
+              {query.trim() && results.length > 0 && (
+                <p class="mt-2 text-sm leading-6 text-slate-400">
+                  Na sua busca por "{query}", encontramos resultados nas areas
+                  permitidas pela administracao.
+                </p>
+              )}
+
               {/* SEARCH INPUT */}
               <div class="mt-4">
                 <input

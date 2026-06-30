@@ -2,9 +2,11 @@ import {
   component$,
   useSignal,
   useComputed$,
+  useVisibleTask$,
   $,
   useOnWindow,
 } from "@builder.io/qwik";
+import { useLocation } from "@builder.io/qwik-city";
 
 import AccessibilityButton from "../button/Accessibility";
 import AccessibilityModal from "../modal/Accessibility";
@@ -17,12 +19,16 @@ import UserSidebar from "../sidebar/User";
 import UserAvatar from "../avatar/User";
 
 import { headerLinks } from "~/data/links";
+import { searchData } from "~/data/search";
 import { getCachedAuthUser } from "~/lib/supabase/client";
+import { loadSearchEntriesFromSupabase } from "~/lib/supabase/platform-data";
+import type { SearchResult } from "~/types/search";
 import type { User } from "~/types/user";
 
 import { searchEverything } from "~/utils/search";
 
 export default component$(() => {
+  const location = useLocation();
   /*
    |--------------------------------------------------------------------------
    | SEARCH
@@ -30,11 +36,20 @@ export default component$(() => {
    */
 
   const search = useSignal("");
+  const searchEntries = useSignal<SearchResult[]>([]);
 
   const searchModal = useSignal(false);
+  const isPhotoPromptRoute = useComputed$(() =>
+    location.url.pathname.startsWith("/ferramentas/gerador-prompt-foto"),
+  );
+  const searchPlaceholder = useComputed$(() =>
+    isPhotoPromptRoute.value
+      ? "Buscar pedidos de edicao de imagem..."
+      : "Pesquisar...",
+  );
 
   const results = useComputed$(() => {
-    return searchEverything(search.value);
+    return searchEverything(search.value, searchEntries.value);
   });
 
   /*
@@ -62,6 +77,22 @@ export default component$(() => {
   
   const handleSearch$ = $((value: string) => {
     search.value = value;
+  });
+
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(async () => {
+    const remoteEntries = await loadSearchEntriesFromSupabase();
+
+    searchEntries.value = [...remoteEntries, ...searchData];
+  });
+
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(({ track }) => {
+    const shouldUsePhotoSearch = track(() => isPhotoPromptRoute.value);
+
+    if (shouldUsePhotoSearch && !search.value.trim()) {
+      search.value = "edicao de imagem";
+    }
   });
 
   useOnWindow(
@@ -162,7 +193,7 @@ export default component$(() => {
               {/* INPUT */}
               <input
                 type="text"
-                placeholder="Pesquisar..."
+                placeholder={searchPlaceholder.value}
                 value={search.value}
                 onInput$={(event) => {
                 const target = event.target as HTMLInputElement;

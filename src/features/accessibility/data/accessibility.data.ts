@@ -45,6 +45,11 @@ export const contrastOptions: AccessibilitySegmentOption<ContrastMode>[] = [
     value: "white",
     description: "Fundo claro com cards brancos e texto escuro.",
   },
+  {
+    label: "Elegante",
+    value: "elegant-light",
+    description: "Tema claro refinado com sombras suaves e acentos discretos.",
+  },
 ];
 
 export const textSizeOptions: AccessibilitySegmentOption<TextSizeMode>[] = [

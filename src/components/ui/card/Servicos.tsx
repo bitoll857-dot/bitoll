@@ -1,9 +1,13 @@
-import { component$ } from "@builder.io/qwik";
+import { component$, type PropFunction } from "@builder.io/qwik";
 
 import type { Service } from "~/types/services";
 
-export default component$<Service>(
-  ({ title, description, image: Image, imageUrl }) => {
+type ServiceCardProps = Service & {
+  onOpen$?: PropFunction<() => void>;
+};
+
+export default component$<ServiceCardProps>(
+  ({ title, description, image: Image, imageUrl, onOpen$ }) => {
     return (
       <div
         class="
@@ -46,6 +50,17 @@ export default component$<Service>(
           <p class="text-slate-300 leading-relaxed">
             {description}
           </p>
+
+          {onOpen$ && (
+            <button
+              type="button"
+              aria-label={`Ver detalhes de ${title}`}
+              onClick$={onOpen$}
+              class="mt-6 inline-flex items-center rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-2 text-sm font-semibold text-white transition duration-300 hover:border-cyan-400 hover:text-cyan-400"
+            >
+              Ver detalhes
+            </button>
+          )}
         </div>
       </div>
     );

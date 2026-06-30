@@ -79,6 +79,21 @@ const getStartDate = (quote: OperatorQuote) =>
     ? quote.request_payload.serviceStartDate
     : quote.created_at.slice(0, 10);
 
+const getEndDate = (quote: OperatorQuote) =>
+  typeof quote.request_payload?.serviceEndDate === "string"
+    ? quote.request_payload.serviceEndDate
+    : quote.estimated_completion;
+
+const getReceiptUrl = (quote: OperatorQuote) =>
+  typeof quote.request_payload?.receiptUrl === "string"
+    ? quote.request_payload.receiptUrl
+    : "";
+
+const getReceiptNumber = (quote: OperatorQuote) =>
+  typeof quote.request_payload?.receiptNumber === "string"
+    ? quote.request_payload.receiptNumber
+    : "";
+
 const getProgress = (
   quote: OperatorQuote,
   structures: AdminStructureOption[],
@@ -132,14 +147,14 @@ export const OperatorQuotesPanel = component$<Props>(({ admin }) => {
       <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p class="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">
-            Operacao
+            Operação
           </p>
           <h2 class="mt-1 text-2xl font-black text-white">
-            Servicos em progresso
+            Serviços em progresso
           </h2>
           <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
             Acompanhe actividades, continue servicos por terminar e consulte o
-            historico dos trabalhos finalizados.
+            histórico dos trabalhos finalizados.
           </p>
         </div>
       </div>
@@ -183,6 +198,7 @@ export const OperatorQuotesPanel = component$<Props>(({ admin }) => {
           <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {activeQuotes.map((quote) => {
               const progress = getProgress(quote, admin.ownerStructureOptions.value);
+              const receiptUrl = getReceiptUrl(quote);
 
               return (
                 <article
@@ -200,7 +216,7 @@ export const OperatorQuotesPanel = component$<Props>(({ admin }) => {
                   </p>
                   <p class="mt-2 text-xs font-bold text-slate-500">
                     Inicio: {formatDate(getStartDate(quote))} / Fim:{" "}
-                    {formatDate(quote.estimated_completion)}
+                    {formatDate(getEndDate(quote))}
                   </p>
                   <div class="mt-3">
                     <div class="flex justify-between text-xs font-bold text-slate-500">
@@ -216,6 +232,18 @@ export const OperatorQuotesPanel = component$<Props>(({ admin }) => {
                       />
                     </div>
                   </div>
+
+                  {receiptUrl && (
+                    <a
+                      href={receiptUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="mt-4 inline-flex rounded-full border border-cyan-300/40 px-3 py-2 text-xs font-black text-cyan-100 transition hover:bg-cyan-300 hover:text-slate-950"
+                    >
+                      Abrir fatura-recibo
+                      {getReceiptNumber(quote) ? ` ${getReceiptNumber(quote)}` : ""}
+                    </a>
+                  )}
                 </article>
               );
             })}
@@ -230,7 +258,7 @@ export const OperatorQuotesPanel = component$<Props>(({ admin }) => {
 
         <section class="rounded-2xl border border-slate-800 bg-slate-950 p-4">
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <h3 class="text-lg font-black text-white">Servicos por terminar</h3>
+            <h3 class="text-lg font-black text-white">Serviços por terminar</h3>
             <span class="rounded-full border border-slate-700 px-3 py-1 text-xs font-bold text-slate-300">
               {unfinishedQuotes.length} pendente
               {unfinishedQuotes.length === 1 ? "" : "s"}
@@ -253,6 +281,7 @@ export const OperatorQuotesPanel = component$<Props>(({ admin }) => {
                     quote,
                     admin.ownerStructureOptions.value,
                   );
+                  const receiptUrl = getReceiptUrl(quote);
 
                   return (
                     <tr key={`unfinished-${quote.id}`} class={tableRowClass}>
@@ -267,7 +296,7 @@ export const OperatorQuotesPanel = component$<Props>(({ admin }) => {
                       </td>
                       <td data-label="Periodo" class={tableCellClass}>
                         {formatDate(getStartDate(quote))} -{" "}
-                        {formatDate(quote.estimated_completion)}
+                        {formatDate(getEndDate(quote))}
                       </td>
                       <td data-label="Progresso" class={tableCellClass}>
                         <span class="font-bold text-slate-200">
@@ -288,6 +317,16 @@ export const OperatorQuotesPanel = component$<Props>(({ admin }) => {
                         >
                           Seguimentar
                         </button>
+                        {receiptUrl && (
+                          <a
+                            href={receiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="ml-2 inline-flex h-9 items-center rounded-full border border-slate-700 px-3 text-xs font-black text-slate-200 transition hover:border-cyan-300/50 hover:text-cyan-100"
+                          >
+                            Fatura-recibo
+                          </a>
+                        )}
                       </td>
                     </tr>
                   );
@@ -297,7 +336,7 @@ export const OperatorQuotesPanel = component$<Props>(({ admin }) => {
 
             {unfinishedQuotes.length === 0 && (
               <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-4 text-sm text-slate-400">
-                Nenhum servico por terminar.
+                Nenhum serviço por terminar.
               </div>
             )}
           </div>
@@ -305,7 +344,7 @@ export const OperatorQuotesPanel = component$<Props>(({ admin }) => {
 
         <section class="rounded-2xl border border-slate-800 bg-slate-950 p-4">
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <h3 class="text-lg font-black text-white">Historico terminado</h3>
+            <h3 class="text-lg font-black text-white">Serviços terminados</h3>
             <span class="rounded-full border border-slate-700 px-3 py-1 text-xs font-bold text-slate-300">
               {finishedQuotes.length} finalizado
               {finishedQuotes.length === 1 ? "" : "s"}
@@ -334,10 +373,20 @@ export const OperatorQuotesPanel = component$<Props>(({ admin }) => {
                     </td>
                     <td data-label="Periodo" class={tableCellClass}>
                       {formatDate(getStartDate(quote))} -{" "}
-                      {formatDate(quote.estimated_completion)}
+                      {formatDate(getEndDate(quote))}
                     </td>
                     <td data-label="Cliente" class={tableCellClass}>
-                      {quote.profiles?.full_name ?? "Cliente"}
+                      <div>{quote.profiles?.full_name ?? "Cliente"}</div>
+                      {getReceiptUrl(quote) && (
+                        <a
+                          href={getReceiptUrl(quote)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="mt-2 inline-flex rounded-full border border-slate-700 px-3 py-1 text-xs font-black text-slate-200 transition hover:border-cyan-300/50 hover:text-cyan-100"
+                        >
+                          Fatura-recibo
+                        </a>
+                      )}
                     </td>
                   </tr>
                 ))}

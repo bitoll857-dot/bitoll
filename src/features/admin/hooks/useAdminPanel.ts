@@ -45,6 +45,8 @@ import type {
   AdminProduct,
   AdminPromotion,
   AdminQuoteTemplate,
+  AdminSearchEntry,
+  AdminSearchSource,
   AdminService,
   AdminStructureStep,
   AdminStructureOption,
@@ -65,6 +67,8 @@ const emptyAccess: AdminAccess = {
 
 type AdminContentTable =
   | "promotions"
+  | "search_entries"
+  | "search_sources"
   | "service_products"
   | "service_structure_options"
   | "service_quote_templates"
@@ -132,6 +136,8 @@ export const useAdminPanel = () => {
   const ownerTemplateItems = useSignal<AdminTemplateItem[]>([]);
   const ownerTemplateRules = useSignal<AdminTemplateRule[]>([]);
   const ownerPromotions = useSignal<AdminPromotion[]>([]);
+  const ownerSearchEntries = useSignal<AdminSearchEntry[]>([]);
+  const ownerSearchSources = useSignal<AdminSearchSource[]>([]);
   const ownerCustomers = useSignal<AdminCustomer[]>([]);
   const ownerCustomQuotes = useSignal<AdminCustomQuote[]>([]);
   const ownerAdminUsers = useSignal<AdminUserProfile[]>([]);
@@ -146,6 +152,7 @@ export const useAdminPanel = () => {
   const editingProductId = useSignal("");
   const editingTemplateId = useSignal("");
   const editingPromotionId = useSignal("");
+  const editingSearchEntryId = useSignal("");
 
   const openServiceActionsId = useSignal("");
   const openStructureActionsId = useSignal("");
@@ -207,6 +214,18 @@ export const useAdminPanel = () => {
     slug: "",
     sortOrder: 10,
     title: "",
+  });
+
+  const searchEntryDraft = useStore({
+    active: true,
+    category: "",
+    description: "",
+    price: 0,
+    relatedService: "",
+    sortOrder: 10,
+    status: "Ativo",
+    title: "",
+    type: "service" as AdminSearchEntry["type"],
   });
 
   const productDraft = useStore({
@@ -420,6 +439,20 @@ export const useAdminPanel = () => {
     promotionDraft.title = "";
   });
 
+  const resetSearchEntryDraft$ = $(() => {
+    editingSearchEntryId.value = "";
+
+    searchEntryDraft.active = true;
+    searchEntryDraft.category = "";
+    searchEntryDraft.description = "";
+    searchEntryDraft.price = 0;
+    searchEntryDraft.relatedService = "";
+    searchEntryDraft.sortOrder = 10;
+    searchEntryDraft.status = "Ativo";
+    searchEntryDraft.title = "";
+    searchEntryDraft.type = "service";
+  });
+
   const refreshOperatorQuotes$ = $(async () => {
     const quotes = await loadOperatorQuotes();
     operatorQuotes.value = quotes;
@@ -447,6 +480,43 @@ export const useAdminPanel = () => {
     ownerTemplateItems.value = content.templateItems;
     ownerTemplateRules.value = content.templateRules;
     ownerPromotions.value = content.promotions;
+    ownerSearchEntries.value = content.searchEntries;
+    ownerSearchSources.value = content.searchSources.length
+      ? content.searchSources
+      : [
+          {
+            active: true,
+            description: "Permite pesquisar nos servicos publicados.",
+            id: "services",
+            label: "Servicos",
+            sort_order: 10,
+            source_key: "services",
+          },
+          {
+            active: true,
+            description: "Permite pesquisar nos artigos publicados.",
+            id: "products",
+            label: "Artigos",
+            sort_order: 20,
+            source_key: "products",
+          },
+          {
+            active: true,
+            description: "Permite pesquisar nas promocoes publicadas.",
+            id: "promotions",
+            label: "Promocoes",
+            sort_order: 30,
+            source_key: "promotions",
+          },
+          {
+            active: false,
+            description: "Permite ao cliente pesquisar as suas solicitacoes.",
+            id: "requests",
+            label: "Solicitacoes",
+            sort_order: 40,
+            source_key: "requests",
+          },
+        ];
     ownerCustomers.value = content.customers;
     ownerCustomQuotes.value = content.customQuotes;
     ownerAdminUsers.value = content.adminUsers;
@@ -530,6 +600,50 @@ export const useAdminPanel = () => {
 
     if (!error) {
       await resetServiceDraft$();
+      await refreshOwnerContent$();
+    }
+  });
+
+  const saveSearchEntry$ = $(async () => {
+    const supabase = getSupabaseBrowserClient();
+
+    if (!supabase || !searchEntryDraft.title.trim()) {
+      feedback.value = "Informe pelo menos o titulo que deve aparecer na pesquisa.";
+      showToast$("Pesquisa incompleta", feedback.value);
+      return;
+    }
+
+    const searchPayload = {
+      active: searchEntryDraft.active,
+      category: searchEntryDraft.category.trim(),
+      description: searchEntryDraft.description.trim(),
+      price: searchEntryDraft.price ? asNumber(searchEntryDraft.price) : null,
+      related_service: searchEntryDraft.relatedService.trim(),
+      sort_order: Math.max(0, Math.floor(asNumber(searchEntryDraft.sortOrder))),
+      status: searchEntryDraft.status.trim(),
+      title: searchEntryDraft.title.trim(),
+      type: searchEntryDraft.type,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = editingSearchEntryId.value
+      ? await supabase
+          .from("search_entries")
+          .update(searchPayload)
+          .eq("id", editingSearchEntryId.value)
+      : await supabase.from("search_entries").insert(searchPayload);
+
+    feedback.value = error
+      ? "Nao foi possivel guardar o item de pesquisa."
+      : "Item de pesquisa guardado.";
+
+    showToast$(
+      error ? "Erro na pesquisa" : "Pesquisa atualizada",
+      feedback.value,
+    );
+
+    if (!error) {
+      await resetSearchEntryDraft$();
       await refreshOwnerContent$();
     }
   });
@@ -1694,6 +1808,23 @@ export const useAdminPanel = () => {
     showToast$("Promocao em edicao", promotion.title);
   });
 
+  const editSearchEntry$ = $((entry: AdminSearchEntry) => {
+    editingSearchEntryId.value = entry.id;
+    showOwnerForm.value = true;
+
+    searchEntryDraft.active = entry.active;
+    searchEntryDraft.category = entry.category || "";
+    searchEntryDraft.description = entry.description || "";
+    searchEntryDraft.price = asNumber(entry.price ?? 0);
+    searchEntryDraft.relatedService = entry.related_service || "";
+    searchEntryDraft.sortOrder = asNumber(entry.sort_order || 10);
+    searchEntryDraft.status = entry.status || "";
+    searchEntryDraft.title = entry.title;
+    searchEntryDraft.type = entry.type || "service";
+
+    showToast$("Item de pesquisa em edicao", entry.title);
+  });
+
   const editCustomQuote$ = $((quote: AdminCustomQuote) => {
     const selectedItems = Array.isArray(quote.selected_items)
       ? quote.selected_items
@@ -2356,6 +2487,8 @@ export const useAdminPanel = () => {
     ownerTemplateItems,
     ownerTemplateRules,
     ownerPromotions,
+    ownerSearchEntries,
+    ownerSearchSources,
     ownerCustomers,
     ownerCustomQuotes,
     ownerAdminUsers,
@@ -2370,6 +2503,7 @@ export const useAdminPanel = () => {
     editingProductId,
     editingTemplateId,
     editingPromotionId,
+    editingSearchEntryId,
 
     openServiceActionsId,
     openStructureActionsId,
@@ -2421,6 +2555,7 @@ export const useAdminPanel = () => {
     productDraft,
     templateDraft,
     promotionDraft,
+    searchEntryDraft,
     customQuoteDraft,
     customQuoteProductPickerOpen,
     customQuoteProductSearch,
@@ -2434,6 +2569,7 @@ export const useAdminPanel = () => {
     resetProductDraft$,
     resetTemplateDraft$,
     resetPromotionDraft$,
+    resetSearchEntryDraft$,
 
     refreshOperatorQuotes$,
     refreshOwnerContent$,
@@ -2443,6 +2579,7 @@ export const useAdminPanel = () => {
     saveProduct$,
     saveTemplate$,
     savePromotion$,
+    saveSearchEntry$,
     saveAdminUserRole$,
     saveCustomQuote$,
     activateCustomQuoteRequest$,
@@ -2463,6 +2600,7 @@ export const useAdminPanel = () => {
     editProduct$,
     editTemplate$,
     editPromotion$,
+    editSearchEntry$,
     editCustomQuote$,
 
     resetCustomQuoteDraft$,

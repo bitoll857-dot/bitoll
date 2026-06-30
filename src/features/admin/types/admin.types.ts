@@ -61,6 +61,28 @@ export type AdminService = {
   title: string;
 };
 
+export type AdminSearchEntry = {
+  active: boolean;
+  category: string;
+  description: string;
+  id: string;
+  price: number | string | null;
+  related_service: string;
+  sort_order: number | string;
+  status: string;
+  title: string;
+  type: "service" | "promotion" | "request" | "product";
+};
+
+export type AdminSearchSource = {
+  active: boolean;
+  description: string;
+  id: string;
+  label: string;
+  source_key: "services" | "products" | "promotions" | "requests";
+  sort_order: number | string;
+};
+
 export type AdminProduct = {
   active: boolean;
   brand: string;
@@ -225,6 +247,7 @@ export type OwnerTab =
   | "users"
   | "revenues"
   | "operations"
+  | "search"
   | "services"
   | "structures"
   | "products"

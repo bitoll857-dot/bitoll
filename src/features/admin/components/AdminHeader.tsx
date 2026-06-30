@@ -11,7 +11,7 @@ type Props = {
 export const AdminHeader = component$<Props>(({ activeTab, onTabChange$, role }) => {
   const roleLabel = role === "operador" ? "Operador" : "Owner";
   const title =
-    role === "operador" ? "Operacao e acompanhamento" : "Gestao da plataforma";
+    role === "operador" ? "Operação e acompanhamento" : "Gestão da plataforma";
 
   return (
       <header class="fixed left-0 top-0 z-50 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">

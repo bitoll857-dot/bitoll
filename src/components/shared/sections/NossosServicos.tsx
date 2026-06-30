@@ -2,12 +2,15 @@ import { component$, useSignal, useVisibleTask$ } from "@builder.io/qwik";
 import { useNavigate } from "@builder.io/qwik-city";
 
 import Button from "../button/Button"
+import ServiceProductsModal from "../modal/ServiceProducts";
 import ServiceCard from "../cards/Servicos";
 import { loadServicesFromSupabase } from "~/lib/supabase/platform-data";
 import type { Service } from "~/types/services";
 
 export default component$(function ServicesSection() {
   const navigate = useNavigate();
+  const selectedServiceSlug = useSignal<string | null>(null);
+  const selectedServiceTitle = useSignal("");
   const services = useSignal<Service[]>([]);
 
   // eslint-disable-next-line qwik/no-use-visible-task
@@ -33,15 +36,30 @@ export default component$(function ServicesSection() {
 
         {/* GRID */}
         <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {services.value.map((service) => (
-            <ServiceCard
-              key={service.title}
-              title={service.title}
-              description={service.description}
-              image={service.image}
-              imageUrl={service.imageUrl}
-            />
-          ))}
+          {services.value.map((service) => {
+            const serviceSlug = service.slug;
+            const serviceTitle = service.title;
+
+            return (
+              <ServiceCard
+                key={serviceTitle}
+                title={serviceTitle}
+                description={service.description}
+                image={service.image}
+                imageUrl={service.imageUrl}
+                slug={serviceSlug}
+                onOpen$={() => {
+                  if (!serviceSlug) {
+                    navigate("/services");
+                    return;
+                  }
+
+                  selectedServiceSlug.value = serviceSlug;
+                  selectedServiceTitle.value = serviceTitle;
+                }}
+              />
+            );
+          })}
         </div>
         <Button
           variant="secondary"
@@ -54,6 +72,17 @@ export default component$(function ServicesSection() {
         </Button>
         
       </div>
+
+      {selectedServiceSlug.value && (
+        <ServiceProductsModal
+          serviceSlug={selectedServiceSlug.value}
+          serviceTitle={selectedServiceTitle.value}
+          onClose$={() => {
+            selectedServiceSlug.value = null;
+            selectedServiceTitle.value = "";
+          }}
+        />
+      )}
     </section>
   );
 });

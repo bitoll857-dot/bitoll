@@ -56,6 +56,17 @@ export const searchData: SearchResult[] = [
   },
 
   {
+    id: "req-photo-edit",
+    type: "request",
+    title: "Pedido de edicao de imagem",
+    description:
+      "Solicitacao para melhorar, restaurar, juntar pessoas, trocar fundo ou preparar foto com IA.",
+    category: "Edicao de imagem",
+    relatedService: "Ferramentas IA, gerador de prompt, foto, imagem, retrato",
+    status: "Ferramenta IA",
+  },
+
+  {
     id: "prd-1",
     type: "product",
     title: "Kit Hikvision 4 Câmeras",

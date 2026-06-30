@@ -3,6 +3,7 @@ import { $, component$, useSignal } from "@builder.io/qwik";
 import SelectField from "../fields/Select";
 import Button from "../button/Button";
 import ActionToast from "~/components/ui/toast";
+import ImgBitollSegurancaTecnologia from "~/media/brand/bitoll-seguranca-tecnologia.svg?jsx";
 import {
   getCachedAuthUser,
   getSupabaseBrowserClient,
@@ -2152,11 +2153,9 @@ export default component$<QuoteRequestFormProps>(
           <div class="rounded-3xl border border-slate-800 bg-white p-5 text-slate-950 shadow-2xl print:rounded-none print:border-0 print:shadow-none">
             <div class="flex flex-wrap items-start justify-between gap-6 border-b border-slate-300 pb-5">
               <div>
-                <img
-                  src="/brand/bitoll-seguranca-tecnologia.svg"
+                <ImgBitollSegurancaTecnologia
                   width={240}
                   height={70}
-                  alt="Bitoll Seguranca & Tecnologia"
                   class="mb-4 h-auto w-56"
                 />
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">

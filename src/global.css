@@ -1027,3 +1027,235 @@ html:is(
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
 }
 
+html.a11y-contrast-elegant-light {
+  --theme-page: #ffffff;
+  --theme-surface: #ffffff;
+  --theme-surface-muted: #f8fafc;
+  --theme-surface-subtle: #f1f5f9;
+  --theme-text: #0f172a;
+  --theme-muted: #475569;
+  --theme-soft: #64748b;
+  --theme-border: #e2e8f0;
+  --theme-border-strong: #cbd5e1;
+  --theme-accent: #0f172a;
+  --theme-accent-soft: #e0f2fe;
+  --theme-danger: #b91c1c;
+  --theme-success: #047857;
+  --theme-warning: #a16207;
+  --theme-shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.06);
+  color-scheme: light;
+}
+
+html.a11y-contrast-elegant-light,
+html.a11y-contrast-elegant-light body {
+  background: var(--theme-page) !important;
+  color: var(--theme-text) !important;
+}
+
+html.a11y-contrast-elegant-light
+  :where(
+    body,
+    main,
+    header,
+    footer,
+    nav,
+    section,
+    aside,
+    article,
+    dialog,
+    [role="dialog"],
+    [class*="bg-"],
+    [class*="from-"],
+    [class*="via-"],
+    [class*="to-"],
+    [class*="border"][class*="rounded"]
+  ):not(img):not(picture):not(video):not(svg):not(
+    [style*="background-image"]
+  ):not([class*="bg-cover"]):not([class*="bg-center"]) {
+  background-color: var(--theme-surface) !important;
+  background-image: none !important;
+  color: var(--theme-text) !important;
+  text-shadow: none !important;
+}
+
+html.a11y-contrast-elegant-light :where(main, section) {
+  background-color: var(--theme-page) !important;
+}
+
+html.a11y-contrast-elegant-light :where(header, nav, footer) {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-color: var(--theme-border) !important;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.05) !important;
+}
+
+html.a11y-contrast-elegant-light
+  :where(
+    article,
+    dialog,
+    [role="dialog"],
+    [class*="rounded-"][class*="border"]
+  ):not(img):not(picture):not(video):not(svg):not(
+    [style*="background-image"]
+  ):not([class*="bg-cover"]):not([class*="bg-center"]) {
+  background-color: var(--theme-surface) !important;
+  border-color: var(--theme-border) !important;
+  box-shadow: var(--theme-shadow-soft) !important;
+}
+
+html.a11y-contrast-elegant-light
+  :where(
+    [class*="bg-slate-950"],
+    [class*="bg-slate-900"],
+    [class*="bg-slate-800"],
+    [class*="bg-gray-950"],
+    [class*="bg-gray-900"],
+    [class*="bg-zinc-950"],
+    [class*="bg-zinc-900"]
+  ) {
+  background-color: var(--theme-surface) !important;
+}
+
+html.a11y-contrast-elegant-light
+  :where(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    span,
+    strong,
+    em,
+    label,
+    a,
+    button,
+    th,
+    td,
+    input,
+    select,
+    textarea,
+    [class*="text-"]
+  ) {
+  color: var(--theme-text) !important;
+  text-shadow: none !important;
+}
+
+html.a11y-contrast-elegant-light
+  :where(p, small, li, dt, dd, [class*="text-slate-4"], [class*="text-slate-5"], [class*="text-slate-6"], [class*="text-gray-4"], [class*="text-gray-5"], [class*="text-zinc-4"], [class*="text-zinc-5"]) {
+  color: var(--theme-muted) !important;
+}
+
+html.a11y-contrast-elegant-light
+  :where(button, a[class*="bg-"], [role="button"], table, thead, tbody, tr, th, td) {
+  background-color: var(--theme-surface) !important;
+  background-image: none !important;
+  border-color: var(--theme-border) !important;
+  box-shadow: none;
+  color: var(--theme-text) !important;
+}
+
+html.a11y-contrast-elegant-light
+  :where(
+    button[class*="bg-cyan"],
+    button[class*="bg-blue"],
+    button[class*="bg-slate-950"],
+    button[class*="bg-slate-900"],
+    a[class*="bg-cyan"],
+    a[class*="bg-blue"],
+    a[class*="bg-slate-950"],
+    a[class*="bg-slate-900"],
+    [role="button"][class*="bg-cyan"],
+    [role="button"][class*="bg-blue"]
+  ) {
+  background-color: var(--theme-accent) !important;
+  border-color: var(--theme-accent) !important;
+  box-shadow: var(--theme-shadow-soft) !important;
+  color: #ffffff !important;
+}
+
+html.a11y-contrast-elegant-light :where([class*="text-cyan"], [class*="text-blue"]) {
+  color: var(--theme-accent) !important;
+}
+
+html.a11y-contrast-elegant-light :where([class*="text-red"]) {
+  color: var(--theme-danger) !important;
+}
+
+html.a11y-contrast-elegant-light :where([class*="text-emerald"], [class*="text-green"]) {
+  color: var(--theme-success) !important;
+}
+
+html.a11y-contrast-elegant-light :where([class*="text-amber"], [class*="text-yellow"]) {
+  color: var(--theme-warning) !important;
+}
+
+html.a11y-contrast-elegant-light :where(input, select, textarea) {
+  background-color: var(--theme-surface) !important;
+  background-image: none !important;
+  border-color: var(--theme-border-strong) !important;
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.03) !important;
+  color: var(--theme-text) !important;
+}
+
+html.a11y-contrast-elegant-light
+  :where(input:focus, select:focus, textarea:focus, button:focus-visible, a:focus-visible) {
+  border-color: var(--theme-accent) !important;
+  outline: 2px solid rgba(15, 23, 42, 0.14) !important;
+  outline-offset: 2px;
+}
+
+html.a11y-contrast-elegant-light :where(thead, th) {
+  background-color: var(--theme-surface-subtle) !important;
+  color: var(--theme-text) !important;
+}
+
+html.a11y-contrast-elegant-light
+  :where([class*="bg-cyan"], [class*="bg-blue"]):not(button):not(a):not(
+    [role="button"]
+  ) {
+  background-color: var(--theme-accent-soft) !important;
+  color: var(--theme-text) !important;
+}
+
+html.a11y-contrast-elegant-light
+  :where([class*="bg-emerald"], [class*="bg-green"]):not(button):not(a):not(
+    [role="button"]
+  ) {
+  background-color: #ecfdf5 !important;
+  color: var(--theme-success) !important;
+}
+
+html.a11y-contrast-elegant-light
+  :where([class*="bg-amber"], [class*="bg-yellow"]):not(button):not(a):not(
+    [role="button"]
+  ) {
+  background-color: #fffbeb !important;
+  color: var(--theme-warning) !important;
+}
+
+html.a11y-contrast-elegant-light
+  :where([class*="bg-red"]):not(button):not(a):not([role="button"]) {
+  background-color: #fef2f2 !important;
+  color: var(--theme-danger) !important;
+}
+
+html.a11y-contrast-elegant-light :where(input, textarea)::placeholder {
+  color: var(--theme-soft) !important;
+  opacity: 1 !important;
+}
+
+html.a11y-contrast-elegant-light :where([class*="text-transparent"]) {
+  -webkit-text-fill-color: var(--theme-text) !important;
+  background-clip: initial !important;
+  -webkit-background-clip: initial !important;
+}
+
+html.a11y-contrast-elegant-light
+  :where(img, picture, video, canvas, svg, [style*="background-image"], [class*="bg-cover"], [class*="bg-center"]) {
+  background-color: transparent !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+

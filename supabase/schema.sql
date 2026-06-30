@@ -1,7 +1,7 @@
 -- Bitoll Platform - base de dados da Bitoll starter schema
 -- Run this file in the base de dados da Bitoll SQL editor after creating the project.
 
-create extension if not exists "pgcrypto";
+create extension if not exists "pgcrypto" with schema extensions;
 
 do $$
 begin
@@ -200,6 +200,32 @@ create table if not exists public.promotions (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.search_entries (
+  id uuid primary key default gen_random_uuid(),
+  type text not null default 'service' check (type in ('service', 'promotion', 'request', 'product')),
+  title text not null,
+  description text not null default '',
+  category text not null default '',
+  status text not null default '',
+  price numeric,
+  related_service text not null default '',
+  sort_order integer not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.search_sources (
+  id text primary key,
+  source_key text not null unique check (source_key in ('services', 'products', 'promotions', 'requests')),
+  label text not null,
+  description text not null default '',
+  sort_order integer not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references public.accounts(id) on delete cascade,
@@ -307,6 +333,73 @@ create table if not exists public.chat_messages (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.photo_prompt_accounts (
+  id uuid primary key default gen_random_uuid(),
+  whatsapp text not null unique,
+  password_hash text not null,
+  recovery_code_hash text,
+  recovery_requested_at timestamptz,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.photo_prompt_requests (
+  id uuid primary key default gen_random_uuid(),
+  whatsapp text not null references public.photo_prompt_accounts(whatsapp) on delete cascade,
+  status text not null default 'pendente',
+  photo_type text not null default '',
+  objective text not null default '',
+  form_payload jsonb not null default '{}'::jsonb,
+  prompt text not null default '',
+  image_name text not null default '',
+  image_url text not null default '',
+  admin_response text not null default '',
+  edited_image_url text not null default '',
+  coins_charged integer not null default 0,
+  responded_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.photo_prompt_wallet_transfers (
+  id uuid primary key default gen_random_uuid(),
+  whatsapp text not null references public.photo_prompt_accounts(whatsapp) on delete cascade,
+  method text not null check (method in ('E-Mola', 'mKesh', 'M-Pesa')),
+  transfer_reference text not null,
+  amount numeric not null default 0,
+  coins integer not null default 0,
+  status text not null default 'pendente' check (status in ('pendente', 'aprovado', 'retido')),
+  admin_note text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+do $$
+begin
+  alter table public.photo_prompt_wallet_transfers
+    drop constraint if exists photo_prompt_wallet_transfers_method_check;
+
+  alter table public.photo_prompt_wallet_transfers
+    add constraint photo_prompt_wallet_transfers_method_check
+    check (method in ('E-Mola', 'mKesh', 'M-Pesa'));
+
+  update public.photo_prompt_wallet_transfers
+  set status = 'retido'
+  where status = 'recusado';
+
+  alter table public.photo_prompt_wallet_transfers
+    drop constraint if exists photo_prompt_wallet_transfers_status_check;
+
+  alter table public.photo_prompt_wallet_transfers
+    add constraint photo_prompt_wallet_transfers_status_check
+    check (status in ('pendente', 'aprovado', 'retido'));
+
+  alter table public.photo_prompt_wallet_transfers
+    alter column status set default 'pendente';
+end;
+$$;
+
 create table if not exists public.platform_documents (
   id uuid primary key default gen_random_uuid(),
   source_type text not null,
@@ -343,6 +436,8 @@ alter table public.service_quote_template_fields enable row level security;
 alter table public.service_quote_template_items enable row level security;
 alter table public.service_quote_template_item_rules enable row level security;
 alter table public.promotions enable row level security;
+alter table public.search_entries enable row level security;
+alter table public.search_sources enable row level security;
 alter table public.projects enable row level security;
 alter table public.quotes enable row level security;
 alter table public.quote_items enable row level security;
@@ -350,6 +445,9 @@ alter table public.custom_quotes enable row level security;
 alter table public.custom_quote_items enable row level security;
 alter table public.chat_threads enable row level security;
 alter table public.chat_messages enable row level security;
+alter table public.photo_prompt_accounts enable row level security;
+alter table public.photo_prompt_requests enable row level security;
+alter table public.photo_prompt_wallet_transfers enable row level security;
 
 create or replace function public.is_admin()
 returns boolean
@@ -410,6 +508,497 @@ as $$
   );
 $$;
 
+create or replace function public.normalize_whatsapp(whatsapp_input text)
+returns text
+language plpgsql
+immutable
+as $$
+declare
+  cleaned_input text := regexp_replace(coalesce(whatsapp_input, ''), '[^0-9+]', '', 'g');
+  digits_only text := regexp_replace(coalesce(whatsapp_input, ''), '[^0-9]', '', 'g');
+begin
+  if cleaned_input = '' then
+    return '';
+  end if;
+
+  if left(cleaned_input, 1) = '+' then
+    return '+' || regexp_replace(cleaned_input, '[^0-9]', '', 'g');
+  end if;
+
+  if left(digits_only, 2) = '00' then
+    return '+' || substring(digits_only from 3);
+  end if;
+
+  if left(digits_only, 3) = '258' then
+    return '+' || digits_only;
+  end if;
+
+  return '+258' || regexp_replace(digits_only, '^0+', '');
+end;
+$$;
+
+create or replace function public.create_photo_prompt_account(
+  whatsapp_input text,
+  password_input text
+)
+returns table(whatsapp text)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  normalized_whatsapp text := public.normalize_whatsapp(whatsapp_input);
+begin
+  if length(normalized_whatsapp) < 8 then
+    raise exception 'Numero de WhatsApp invalido.';
+  end if;
+
+  if length(coalesce(password_input, '')) < 4 then
+    raise exception 'A senha deve ter pelo menos 4 caracteres.';
+  end if;
+
+  insert into public.photo_prompt_accounts (
+    whatsapp,
+    password_hash,
+    created_by
+  )
+  values (
+    normalized_whatsapp,
+    crypt(password_input, gen_salt('bf')),
+    auth.uid()
+  )
+  on conflict on constraint photo_prompt_accounts_whatsapp_key do update set
+    password_hash = excluded.password_hash,
+    created_by = coalesce(public.photo_prompt_accounts.created_by, auth.uid()),
+    updated_at = now();
+
+  return query select normalized_whatsapp;
+end;
+$$;
+
+create or replace function public.login_photo_prompt_account(
+  whatsapp_input text,
+  password_input text
+)
+returns table(whatsapp text)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  normalized_whatsapp text := public.normalize_whatsapp(whatsapp_input);
+begin
+  return query
+  select accounts.whatsapp
+  from public.photo_prompt_accounts as accounts
+  where accounts.whatsapp = normalized_whatsapp
+    and accounts.password_hash = crypt(password_input, accounts.password_hash)
+  limit 1;
+end;
+$$;
+
+create or replace function public.request_photo_prompt_recovery(
+  whatsapp_input text,
+  recovery_code_input text
+)
+returns table(whatsapp text)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  normalized_whatsapp text := public.normalize_whatsapp(whatsapp_input);
+begin
+  update public.photo_prompt_accounts
+  set
+    recovery_code_hash = crypt(recovery_code_input, gen_salt('bf')),
+    recovery_requested_at = now(),
+    updated_at = now()
+  where photo_prompt_accounts.whatsapp = normalized_whatsapp;
+
+  return query
+  select accounts.whatsapp
+  from public.photo_prompt_accounts as accounts
+  where accounts.whatsapp = normalized_whatsapp
+  limit 1;
+end;
+$$;
+
+create or replace function public.reset_photo_prompt_password(
+  whatsapp_input text,
+  recovery_code_input text,
+  password_input text
+)
+returns table(whatsapp text)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  normalized_whatsapp text := public.normalize_whatsapp(whatsapp_input);
+begin
+  if length(coalesce(password_input, '')) < 4 then
+    raise exception 'A senha deve ter pelo menos 4 caracteres.';
+  end if;
+
+  update public.photo_prompt_accounts
+  set
+    password_hash = crypt(password_input, gen_salt('bf')),
+    recovery_code_hash = null,
+    recovery_requested_at = null,
+    updated_at = now()
+  where photo_prompt_accounts.whatsapp = normalized_whatsapp
+    and photo_prompt_accounts.recovery_code_hash is not null
+    and photo_prompt_accounts.recovery_code_hash = crypt(
+      recovery_code_input,
+      photo_prompt_accounts.recovery_code_hash
+    )
+    and photo_prompt_accounts.recovery_requested_at > now() - interval '15 minutes';
+
+  return query
+  select accounts.whatsapp
+  from public.photo_prompt_accounts as accounts
+  where accounts.whatsapp = normalized_whatsapp
+    and accounts.recovery_code_hash is null
+  limit 1;
+end;
+$$;
+
+create or replace function public.change_photo_prompt_password(
+  whatsapp_input text,
+  current_password_input text,
+  new_password_input text
+)
+returns table(whatsapp text)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  normalized_whatsapp text := public.normalize_whatsapp(whatsapp_input);
+begin
+  if length(coalesce(new_password_input, '')) < 4 then
+    raise exception 'A senha deve ter pelo menos 4 caracteres.';
+  end if;
+
+  update public.photo_prompt_accounts
+  set
+    password_hash = crypt(new_password_input, gen_salt('bf')),
+    updated_at = now()
+  where photo_prompt_accounts.whatsapp = normalized_whatsapp
+    and photo_prompt_accounts.password_hash = crypt(
+      current_password_input,
+      photo_prompt_accounts.password_hash
+    );
+
+  return query
+  select accounts.whatsapp
+  from public.photo_prompt_accounts as accounts
+  where accounts.whatsapp = normalized_whatsapp
+    and accounts.password_hash = crypt(new_password_input, accounts.password_hash)
+  limit 1;
+end;
+$$;
+
+drop function if exists public.create_photo_prompt_request(text, jsonb, text, text, text);
+drop function if exists public.create_photo_prompt_request(text, jsonb, text, text, text, integer);
+
+create or replace function public.create_photo_prompt_request(
+  whatsapp_input text,
+  password_input text,
+  form_payload_input jsonb,
+  prompt_input text,
+  image_name_input text default '',
+  image_url_input text default '',
+  coins_charged_input integer default 0
+)
+returns table(id uuid, status text)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  normalized_whatsapp text := public.normalize_whatsapp(whatsapp_input);
+  created_request_id uuid;
+  requested_coins integer := greatest(coalesce(coins_charged_input, 0), 0);
+  active_coins integer := 0;
+  spent_coins integer := 0;
+begin
+  if not exists (
+    select 1
+    from public.photo_prompt_accounts as accounts
+    where accounts.whatsapp = normalized_whatsapp
+      and accounts.password_hash = crypt(password_input, accounts.password_hash)
+  ) then
+    raise exception 'Acesso invalido.';
+  end if;
+
+  select coalesce(sum(transfers.coins), 0)::integer
+  into active_coins
+  from public.photo_prompt_wallet_transfers as transfers
+  where transfers.whatsapp = normalized_whatsapp
+    and transfers.status in ('aprovado', 'pendente');
+
+  select coalesce(sum(requests.coins_charged), 0)::integer
+  into spent_coins
+  from public.photo_prompt_requests as requests
+  where requests.whatsapp = normalized_whatsapp;
+
+  if (active_coins - spent_coins) < 100 then
+    raise exception 'Precisa de pelo menos 100 moedas para iniciar um pedido.';
+  end if;
+
+  if requested_coins > (active_coins - spent_coins) then
+    raise exception 'Moedas insuficientes para este pedido.';
+  end if;
+
+  insert into public.photo_prompt_requests (
+    whatsapp,
+    status,
+    photo_type,
+    objective,
+    form_payload,
+    prompt,
+    image_name,
+    image_url,
+    coins_charged
+  )
+  values (
+    normalized_whatsapp,
+    'pendente',
+    coalesce(form_payload_input->>'photoType', ''),
+    coalesce(form_payload_input->>'objective', ''),
+    coalesce(form_payload_input, '{}'::jsonb),
+    coalesce(prompt_input, ''),
+    coalesce(image_name_input, ''),
+    coalesce(image_url_input, ''),
+    requested_coins
+  )
+  returning photo_prompt_requests.id into created_request_id;
+
+  return query
+  select created_request_id, 'pendente'::text;
+end;
+$$;
+
+create or replace function public.list_photo_prompt_requests(
+  whatsapp_input text,
+  password_input text
+)
+returns table(
+  id uuid,
+  whatsapp text,
+  status text,
+  photo_type text,
+  objective text,
+  image_name text,
+  admin_response text,
+  edited_image_url text,
+  coins_charged integer,
+  created_at timestamptz,
+  responded_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  normalized_whatsapp text := public.normalize_whatsapp(whatsapp_input);
+begin
+  if not exists (
+    select 1
+    from public.photo_prompt_accounts as accounts
+    where accounts.whatsapp = normalized_whatsapp
+      and accounts.password_hash = crypt(password_input, accounts.password_hash)
+  ) then
+    raise exception 'Acesso invalido.';
+  end if;
+
+  return query
+  select
+    requests.id,
+    requests.whatsapp,
+    requests.status,
+    requests.photo_type,
+    requests.objective,
+    requests.image_name,
+    requests.admin_response,
+    requests.edited_image_url,
+    requests.coins_charged,
+    requests.created_at,
+    requests.responded_at
+  from public.photo_prompt_requests as requests
+  where requests.whatsapp = normalized_whatsapp
+  order by requests.created_at desc
+  limit 100;
+end;
+$$;
+
+create or replace function public.create_photo_prompt_wallet_transfer(
+  whatsapp_input text,
+  password_input text,
+  method_input text,
+  transfer_reference_input text,
+  amount_input numeric,
+  coins_input integer
+)
+returns table(id uuid, status text)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  normalized_whatsapp text := public.normalize_whatsapp(whatsapp_input);
+  calculated_coins integer := floor(greatest(coalesce(amount_input, 0), 0) / 0.1)::integer;
+  created_transfer_id uuid;
+  local_number text;
+  wallet_prefix text;
+  detected_method text;
+begin
+  if not exists (
+    select 1
+    from public.photo_prompt_accounts as accounts
+    where accounts.whatsapp = normalized_whatsapp
+      and accounts.password_hash = crypt(password_input, accounts.password_hash)
+  ) then
+    raise exception 'Acesso invalido.';
+  end if;
+
+  if left(normalized_whatsapp, 4) <> '+258' then
+    raise exception 'Nao e possivel efectuar a operacao com prefixo estrangeiro. Contacte pelo WhatsApp o admin 00258866136316.';
+  end if;
+
+  local_number := regexp_replace(substring(normalized_whatsapp from 5), '^0+', '');
+  wallet_prefix := left(local_number, 2);
+
+  if wallet_prefix in ('86', '87', '88') then
+    detected_method := 'E-Mola';
+  elsif wallet_prefix in ('82', '83') then
+    detected_method := 'mKesh';
+  elsif wallet_prefix in ('84', '85') then
+    detected_method := 'M-Pesa';
+  else
+    raise exception 'Nao foi possivel reconhecer a carteira pelo prefixo %. Contacte pelo WhatsApp o admin 00258866136316.', wallet_prefix;
+  end if;
+
+  if length(trim(coalesce(transfer_reference_input, ''))) < 4 then
+    raise exception 'ID da transferencia invalido.';
+  end if;
+
+  if greatest(coalesce(amount_input, 0), 0) <= 0 or calculated_coins <= 0 then
+    raise exception 'Valor transferido invalido.';
+  end if;
+
+  insert into public.photo_prompt_wallet_transfers (
+    whatsapp,
+    method,
+    transfer_reference,
+    amount,
+    coins,
+    status
+  )
+  values (
+    normalized_whatsapp,
+    detected_method,
+    trim(transfer_reference_input),
+    greatest(coalesce(amount_input, 0), 0),
+    calculated_coins,
+    'pendente'
+  )
+  returning photo_prompt_wallet_transfers.id into created_transfer_id;
+
+  return query select created_transfer_id, 'pendente'::text;
+end;
+$$;
+
+create or replace function public.list_photo_prompt_wallet_transfers(
+  whatsapp_input text,
+  password_input text
+)
+returns table(
+  id uuid,
+  whatsapp text,
+  method text,
+  transfer_reference text,
+  amount numeric,
+  coins integer,
+  status text,
+  admin_note text,
+  created_at timestamptz,
+  updated_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  normalized_whatsapp text := public.normalize_whatsapp(whatsapp_input);
+begin
+  if not exists (
+    select 1
+    from public.photo_prompt_accounts as accounts
+    where accounts.whatsapp = normalized_whatsapp
+      and accounts.password_hash = crypt(password_input, accounts.password_hash)
+  ) then
+    raise exception 'Acesso invalido.';
+  end if;
+
+  return query
+  select
+    transfers.id,
+    transfers.whatsapp,
+    transfers.method,
+    transfers.transfer_reference,
+    transfers.amount,
+    transfers.coins,
+    transfers.status,
+    transfers.admin_note,
+    transfers.created_at,
+    transfers.updated_at
+  from public.photo_prompt_wallet_transfers as transfers
+  where transfers.whatsapp = normalized_whatsapp
+  order by transfers.created_at desc
+  limit 100;
+end;
+$$;
+
+grant execute on function public.create_photo_prompt_account(text, text) to anon, authenticated;
+grant execute on function public.login_photo_prompt_account(text, text) to anon, authenticated;
+grant execute on function public.request_photo_prompt_recovery(text, text) to anon, authenticated;
+grant execute on function public.reset_photo_prompt_password(text, text, text) to anon, authenticated;
+grant execute on function public.change_photo_prompt_password(text, text, text) to anon, authenticated;
+grant execute on function public.create_photo_prompt_request(text, text, jsonb, text, text, text, integer) to anon, authenticated;
+grant execute on function public.list_photo_prompt_requests(text, text) to anon, authenticated;
+grant execute on function public.create_photo_prompt_wallet_transfer(text, text, text, text, numeric, integer) to anon, authenticated;
+grant execute on function public.list_photo_prompt_wallet_transfers(text, text) to anon, authenticated;
+
+drop policy if exists "Admins can view photo prompt accounts" on public.photo_prompt_accounts;
+create policy "Admins can view photo prompt accounts"
+on public.photo_prompt_accounts for select
+using (public.is_admin());
+
+drop policy if exists "Admins can view photo prompt requests" on public.photo_prompt_requests;
+create policy "Admins can view photo prompt requests"
+on public.photo_prompt_requests for select
+using (public.is_admin());
+
+drop policy if exists "Admins can update photo prompt requests" on public.photo_prompt_requests;
+create policy "Admins can update photo prompt requests"
+on public.photo_prompt_requests for update
+using (public.is_admin())
+with check (public.is_admin());
+
+drop policy if exists "Admins can view photo prompt wallet transfers" on public.photo_prompt_wallet_transfers;
+create policy "Admins can view photo prompt wallet transfers"
+on public.photo_prompt_wallet_transfers for select
+using (public.is_admin());
+
+drop policy if exists "Admins can update photo prompt wallet transfers" on public.photo_prompt_wallet_transfers;
+create policy "Admins can update photo prompt wallet transfers"
+on public.photo_prompt_wallet_transfers for update
+using (public.is_admin())
+with check (public.is_admin());
+
 alter table public.services add column if not exists image_key text not null default '';
 alter table public.services add column if not exists image_url text not null default '';
 alter table public.services add column if not exists features jsonb not null default '[]'::jsonb;
@@ -464,6 +1053,25 @@ alter table public.promotions add column if not exists technologies jsonb not nu
 alter table public.promotions add column if not exists features jsonb not null default '[]'::jsonb;
 alter table public.promotions add column if not exists articles jsonb not null default '[]'::jsonb;
 
+alter table public.search_entries add column if not exists description text not null default '';
+alter table public.search_entries add column if not exists category text not null default '';
+alter table public.search_entries add column if not exists status text not null default '';
+alter table public.search_entries add column if not exists price numeric;
+alter table public.search_entries add column if not exists related_service text not null default '';
+alter table public.search_entries add column if not exists sort_order integer not null default 0;
+alter table public.search_entries add column if not exists active boolean not null default true;
+alter table public.search_entries add column if not exists updated_at timestamptz not null default now();
+
+alter table public.search_sources add column if not exists description text not null default '';
+alter table public.search_sources add column if not exists sort_order integer not null default 0;
+alter table public.search_sources add column if not exists active boolean not null default true;
+alter table public.search_sources add column if not exists updated_at timestamptz not null default now();
+
+alter table public.photo_prompt_requests add column if not exists admin_response text not null default '';
+alter table public.photo_prompt_requests add column if not exists edited_image_url text not null default '';
+alter table public.photo_prompt_requests add column if not exists coins_charged integer not null default 0;
+alter table public.photo_prompt_requests add column if not exists responded_at timestamptz;
+
 alter table public.quotes add column if not exists progress numeric;
 alter table public.quotes add column if not exists next_step text not null default '';
 alter table public.quotes add column if not exists technician text not null default '';
@@ -486,6 +1094,25 @@ on conflict (id) do update set public = true;
 insert into storage.buckets (id, name, public)
 values ('bitoll-documents', 'bitoll-documents', true)
 on conflict (id) do update set public = true;
+
+insert into public.search_sources (
+  id,
+  source_key,
+  label,
+  description,
+  sort_order,
+  active
+)
+values
+  ('services', 'services', 'Servicos', 'Resultados aparecem como servicos encontrados na busca do cliente.', 10, true),
+  ('products', 'products', 'Artigos', 'Resultados aparecem como artigos encontrados na busca do cliente.', 20, true),
+  ('promotions', 'promotions', 'Promocoes', 'Resultados aparecem como promocoes encontradas na busca do cliente.', 30, true),
+  ('requests', 'requests', 'Solicitacoes', 'Resultados aparecem como solicitacoes do proprio cliente.', 40, false)
+on conflict (id) do update set
+  label = excluded.label,
+  description = excluded.description,
+  sort_order = excluded.sort_order,
+  updated_at = now();
 
 create unique index if not exists promotions_slug_unique
 on public.promotions(slug)
@@ -742,6 +1369,26 @@ create policy "Admins can view all promotions"
 on public.promotions for select
 using (public.is_admin());
 
+drop policy if exists "Active search entries are public" on public.search_entries;
+create policy "Active search entries are public"
+on public.search_entries for select
+using (active = true);
+
+drop policy if exists "Admins can view all search entries" on public.search_entries;
+create policy "Admins can view all search entries"
+on public.search_entries for select
+using (public.is_admin());
+
+drop policy if exists "Search sources are public" on public.search_sources;
+create policy "Search sources are public"
+on public.search_sources for select
+using (true);
+
+drop policy if exists "Admins can view all search sources" on public.search_sources;
+create policy "Admins can view all search sources"
+on public.search_sources for select
+using (public.is_admin());
+
 drop policy if exists "Content managers can create services" on public.services;
 create policy "Content managers can create services"
 on public.services for insert
@@ -869,6 +1516,28 @@ drop policy if exists "Content managers can delete promotions" on public.promoti
 create policy "Content managers can delete promotions"
 on public.promotions for delete
 using (public.can_manage_content());
+
+drop policy if exists "Content managers can create search entries" on public.search_entries;
+create policy "Content managers can create search entries"
+on public.search_entries for insert
+with check (public.can_manage_content());
+
+drop policy if exists "Content managers can update search entries" on public.search_entries;
+create policy "Content managers can update search entries"
+on public.search_entries for update
+using (public.can_manage_content())
+with check (public.can_manage_content());
+
+drop policy if exists "Content managers can delete search entries" on public.search_entries;
+create policy "Content managers can delete search entries"
+on public.search_entries for delete
+using (public.can_manage_content());
+
+drop policy if exists "Content managers can update search sources" on public.search_sources;
+create policy "Content managers can update search sources"
+on public.search_sources for update
+using (public.can_manage_content())
+with check (public.can_manage_content());
 
 drop policy if exists "Bitoll images are public" on storage.objects;
 create policy "Bitoll images are public"

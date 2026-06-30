@@ -41,7 +41,9 @@ export default component$<AccessibilitySegmentProps>(
                       ? "bg-[#374151]"
                       : option.value === "white"
                         ? "bg-white"
-                        : "bg-slate-300";
+                        : option.value === "elegant-light"
+                          ? "bg-[#F8FAFC]"
+                          : "bg-slate-300";
 
             return (
               <button

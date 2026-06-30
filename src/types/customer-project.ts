@@ -12,6 +12,8 @@ export interface CustomerProject {
   service: string;
   location: string;
   requestedAt: string;
+  activityStartAt: string;
+  activityEndAt: string;
   status: ProjectStatus;
   currency: string;
   subtotal: number;
@@ -25,6 +27,13 @@ export interface CustomerProject {
   nextStep: string;
   technician: string;
   estimatedCompletion: string;
+  receiptNumber: string;
+  receiptUrl: string;
+  procedureSteps: {
+    checked: boolean;
+    day: number;
+    label: string;
+  }[];
   updates: string[];
   items: {
     name: string;

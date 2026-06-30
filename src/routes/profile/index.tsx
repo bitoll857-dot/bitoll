@@ -9,7 +9,13 @@ import type { AuthMode } from "~/types/auth";
 import type { CustomerProject } from "~/types/customer-project";
 import type { User } from "~/types/user";
 
+const maintenancePhone = "258866136316";
+
 const formatDate = (value: string) => {
+  if (!value) {
+    return "Por definir";
+  }
+
   const [year, month, day] = value.split("-");
 
   return day && month && year ? `${day}/${month}/${year}` : value;
@@ -25,6 +31,16 @@ const statusTone = (status: CustomerProject["status"]) =>
   })[status];
 
 const ProjectCard = component$<{ project: CustomerProject }>(({ project }) => {
+  const maintenanceMessage = encodeURIComponent(
+    [
+      "Ola Bitoll, gostaria de solicitar manutencao.",
+      `Servico: ${project.service}`,
+      `Solicitacao: ${project.quoteNumber}`,
+      `Estado: ${project.status}`,
+    ].join("\n"),
+  );
+  const maintenanceHref = `https://wa.me/${maintenancePhone}?text=${maintenanceMessage}`;
+
   return (
     <article class="rounded-2xl border border-slate-800 bg-slate-950 p-4">
       <div class="flex flex-wrap items-start justify-between gap-3">
@@ -33,9 +49,6 @@ const ProjectCard = component$<{ project: CustomerProject }>(({ project }) => {
             {project.quoteNumber}
           </p>
           <h2 class="mt-2 text-lg font-black text-white">{project.service}</h2>
-          <p class="mt-1 text-sm text-slate-400">
-            Solicitado em {formatDate(project.requestedAt)}
-          </p>
         </div>
 
         <span
@@ -49,6 +62,33 @@ const ProjectCard = component$<{ project: CustomerProject }>(({ project }) => {
       </div>
 
       <div class="mt-4 grid gap-3 md:grid-cols-3">
+        <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+          <p class="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+            Data de solicitacao
+          </p>
+          <p class="mt-1 text-sm font-bold text-slate-200">
+            {formatDate(project.requestedAt)}
+          </p>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+          <p class="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+            Inicio de actividade
+          </p>
+          <p class="mt-1 text-sm font-bold text-slate-200">
+            {formatDate(project.activityStartAt)}
+          </p>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+          <p class="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+            Fim de actividade
+          </p>
+          <p class="mt-1 text-sm font-bold text-slate-200">
+            {formatDate(project.activityEndAt)}
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-3 grid gap-3 md:grid-cols-2">
         <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
           <p class="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
             Valor
@@ -65,14 +105,29 @@ const ProjectCard = component$<{ project: CustomerProject }>(({ project }) => {
             {project.technician}
           </p>
         </div>
-        <div class="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-          <p class="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-            Previsao
-          </p>
-          <p class="mt-1 text-sm font-bold text-slate-200">
-            {formatDate(project.estimatedCompletion)}
-          </p>
-        </div>
+      </div>
+
+      <div class="mt-4 flex flex-wrap gap-3">
+        {project.receiptUrl && (
+          <a
+            href={project.receiptUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center justify-center rounded-xl border border-cyan-300/40 bg-cyan-300 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-cyan-200"
+          >
+            Abrir fatura-recibo
+            {project.receiptNumber ? ` ${project.receiptNumber}` : ""}
+          </a>
+        )}
+
+        <a
+          href={maintenanceHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center justify-center rounded-xl border border-slate-700 px-4 py-3 text-sm font-black text-slate-200 transition hover:border-cyan-300/50 hover:text-cyan-100"
+        >
+          Solicitar manutencao
+        </a>
       </div>
 
       <div class="mt-4">
@@ -90,23 +145,41 @@ const ProjectCard = component$<{ project: CustomerProject }>(({ project }) => {
 
       <div class="mt-4 rounded-xl border border-slate-800 bg-slate-900/70 p-3">
         <p class="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-          Proximo passo
+          Passos do servico
         </p>
-        <p class="mt-2 text-sm leading-6 text-slate-300">{project.nextStep}</p>
-      </div>
 
-      {project.updates.length > 0 && (
-        <div class="mt-4 flex flex-wrap gap-2">
-          {project.updates.map((update) => (
-            <span
-              key={update}
-              class="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-300"
-            >
-              {update}
-            </span>
-          ))}
-        </div>
-      )}
+        {project.procedureSteps.length > 0 ? (
+          <ol class="mt-3 grid gap-2">
+            {project.procedureSteps.map((step, index) => (
+              <li
+                key={`${project.id}-step-${index}`}
+                class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-3 text-sm"
+              >
+                <span class="flex min-w-0 items-center gap-3">
+                  <span
+                    class={[
+                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black",
+                      step.checked
+                        ? "bg-emerald-300 text-slate-950"
+                        : "bg-slate-800 text-slate-300",
+                    ]}
+                  >
+                    {index + 1}
+                  </span>
+                  <span class="font-bold text-slate-200">{step.label}</span>
+                </span>
+                <span class="rounded-full border border-slate-700 px-3 py-1 text-xs font-bold text-slate-400">
+                  Dia {step.day} / {step.checked ? "feito" : "pendente"}
+                </span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p class="mt-2 text-sm leading-6 text-slate-300">
+            Os passos de execucao ainda nao foram definidos pela equipa Bitoll.
+          </p>
+        )}
+      </div>
     </article>
   );
 });

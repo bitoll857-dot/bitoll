@@ -6,6 +6,8 @@ import type {
   AdminProduct,
   AdminPromotion,
   AdminQuoteTemplate,
+  AdminSearchEntry,
+  AdminSearchSource,
   AdminService,
   AdminStructureOption,
   AdminTemplateField,
@@ -173,6 +175,8 @@ export const loadOwnerContent = async () => {
       operators: [],
       products: [],
       promotions: [],
+      searchEntries: [],
+      searchSources: [],
       services: [],
       structureOptions: [],
       templateFields: [],
@@ -191,6 +195,8 @@ export const loadOwnerContent = async () => {
     templateItems,
     templateRules,
     promotions,
+    searchEntries,
+    searchSources,
     customers,
     customQuotes,
     adminUsers,
@@ -242,6 +248,18 @@ export const loadOwnerContent = async () => {
       )
       .order("created_at", { ascending: false })
       .limit(30),
+
+    supabase
+      .from("search_entries")
+      .select("id,type,title,description,category,status,price,related_service,sort_order,active")
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false })
+      .limit(120),
+
+    supabase
+      .from("search_sources")
+      .select("id,source_key,label,description,sort_order,active")
+      .order("sort_order", { ascending: true }),
 
     supabase
       .from("profiles")
@@ -347,6 +365,8 @@ export const loadOwnerContent = async () => {
       .filter(Boolean) as AdminOperatorUser[],
     products: (products.data ?? []) as AdminProduct[],
     promotions: (promotions.data ?? []) as AdminPromotion[],
+    searchEntries: (searchEntries.data ?? []) as AdminSearchEntry[],
+    searchSources: (searchSources.data ?? []) as AdminSearchSource[],
     services: (services.data ?? []) as AdminService[],
     structureOptions: ((structureOptions.data ?? []) as AdminStructureOption[]).map(
       (option) => ({

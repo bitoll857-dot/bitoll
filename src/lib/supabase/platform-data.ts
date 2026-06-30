@@ -17,6 +17,8 @@ import type {
   ServiceStructureOption,
   StructureType,
 } from "~/types/service-products";
+import { searchData } from "~/data/search";
+import type { SearchResult, SearchResultType } from "~/types/search";
 
 import { getCachedAuthUser, getSupabaseBrowserClient } from "./client";
 import { formatMoney } from "~/lib/formatters/money";
@@ -164,6 +166,33 @@ const asStringArray = (value: unknown) =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 
 const asNumber = (value: number | string | null | undefined) => Number(value ?? 0);
+
+const asString = (value: unknown) => (typeof value === "string" ? value : "");
+
+const asProcedureSteps = (value: unknown) =>
+  Array.isArray(value)
+    ? value
+        .map((item) => {
+          if (!item || typeof item !== "object") {
+            return null;
+          }
+
+          const record = item as Record<string, unknown>;
+          const label = asString(record.label).trim();
+          const day = Math.max(
+            1,
+            Math.ceil(
+              asNumber(record.day as number | string | null | undefined) || 1,
+            ),
+          );
+
+          return label ? { checked: Boolean(record.checked), day, label } : null;
+        })
+        .filter(
+          (step): step is { checked: boolean; day: number; label: string } =>
+            Boolean(step),
+        )
+    : [];
 
 const LEGACY_DEFAULT_PROGRESS = 35;
 const LEGACY_DEFAULT_NEXT_STEP =
@@ -347,6 +376,129 @@ export const loadServicesFromSupabase = async () => {
   }
 
   return (data as ServiceRow[]).map(mapService);
+};
+
+export const loadSearchEntriesFromSupabase = async (): Promise<SearchResult[]> => {
+  const supabase = getSupabaseBrowserClient();
+
+  if (!supabase) {
+    return searchData;
+  }
+
+  const { data: sources, error: sourcesError } = await supabase
+    .from("search_sources")
+    .select("source_key,active,sort_order")
+    .eq("active", true)
+    .order("sort_order", { ascending: true });
+
+  const enabledSources = sourcesError
+    ? ["services", "products", "promotions"]
+    : (sources ?? []).map((source) => source.source_key);
+
+  if (enabledSources.length === 0) {
+    return [];
+  }
+
+  const results: SearchResult[] = [];
+
+  if (enabledSources.includes("services")) {
+    const { data } = await supabase
+      .from("services")
+      .select("slug,title,short_description,description,image_url,active")
+      .eq("active", true)
+      .order("sort_order", { ascending: true });
+
+    results.push(
+      ...((data ?? []).map((service) => ({
+        category: "Servico",
+        description: service.short_description || service.description || "",
+        id: `service-${service.slug}`,
+        imageUrl: service.image_url || "",
+        relatedService: service.slug,
+        status: service.description || service.short_description || "",
+        title: service.title,
+        type: "service" as SearchResultType,
+      }))),
+    );
+  }
+
+  if (enabledSources.includes("products")) {
+    const { data } = await supabase
+      .from("service_products")
+      .select("id,service_slug,name,short_name,brand,category,description,image_url,unit_price,active")
+      .eq("active", true)
+      .order("created_at", { ascending: false })
+      .limit(160);
+
+    results.push(
+      ...((data ?? []).map((product) => ({
+        category: product.category || "Artigo",
+        description:
+          product.description ||
+          [product.brand, product.service_slug].filter(Boolean).join(" / "),
+        id: `product-${product.id}`,
+        imageUrl: product.image_url || "",
+        price: product.unit_price ?? undefined,
+        relatedService: product.service_slug,
+        status: product.brand || product.service_slug || "",
+        title: product.short_name || product.name,
+        type: "product" as SearchResultType,
+      }))),
+    );
+  }
+
+  if (enabledSources.includes("promotions")) {
+    const { data } = await supabase
+      .from("promotions")
+      .select("id,slug,service_slug,title,short_description,description,discount_label,image,active")
+      .eq("active", true)
+      .order("created_at", { ascending: false })
+      .limit(80);
+
+    results.push(
+      ...((data ?? []).map((promotion) => ({
+        category: "Promocao",
+        description:
+          promotion.short_description ||
+          promotion.description ||
+          promotion.discount_label ||
+          "",
+        id: `promotion-${promotion.id}`,
+        imageUrl: promotion.image || "",
+        relatedService: promotion.service_slug ?? promotion.slug ?? "",
+        status: promotion.discount_label || "",
+        title: promotion.title,
+        type: "promotion" as SearchResultType,
+      }))),
+    );
+  }
+
+  if (enabledSources.includes("requests")) {
+    const user = getCachedAuthUser();
+
+    if (user) {
+      const { data } = await supabase
+        .from("quotes")
+        .select("id,quote_number,service_slug,status,total,currency,created_at")
+        .eq("profile_id", String(user.id))
+        .order("created_at", { ascending: false })
+        .limit(80);
+
+      results.push(
+        ...((data ?? []).map((quote) => ({
+          category: "Solicitacao",
+          description: `${quote.service_slug || "Servico Bitoll"} / ${formatMoney(asNumber(quote.total), quote.currency)}`,
+          id: `request-${quote.id}`,
+          relatedService: quote.service_slug ?? "",
+          status: quote.status,
+          title: quote.quote_number,
+          type: "request" as SearchResultType,
+        }))),
+      );
+    }
+  }
+
+  return results.length ? results : searchData;
 };
 
 export const loadPromotionsFromSupabase = async () => {
@@ -694,6 +846,11 @@ export const loadCustomerProjectsFromSupabase = async (): Promise<CustomerProjec
     const structureCostPercentage = asNumber(
       requestPayload.structureCostPercentage as number | string | null | undefined,
     );
+    const serviceStartDate = asString(requestPayload.serviceStartDate);
+    const serviceEndDate = asString(requestPayload.serviceEndDate);
+    const receiptNumber = asString(requestPayload.receiptNumber);
+    const receiptUrl = asString(requestPayload.receiptUrl);
+    const procedureSteps = asProcedureSteps(requestPayload.procedureSteps);
 
     return {
       id: quote.id,
@@ -705,6 +862,8 @@ export const loadCustomerProjectsFromSupabase = async (): Promise<CustomerProjec
           : quote.service_slug || "Servico Bitoll",
       location: user.city || "A confirmar",
       requestedAt: createdAt,
+      activityStartAt: serviceStartDate || createdAt,
+      activityEndAt: serviceEndDate || quote.estimated_completion || createdAt,
       status,
       currency: quote.currency,
       subtotal: asNumber(quote.subtotal),
@@ -720,6 +879,9 @@ export const loadCustomerProjectsFromSupabase = async (): Promise<CustomerProjec
         "A cotacao ainda esta em processo de validacao pela equipa Bitoll.",
       technician: (hasCustomTechnician ? technician : "") || "Equipa Bitoll",
       estimatedCompletion: quote.estimated_completion ?? createdAt,
+      receiptNumber,
+      receiptUrl,
+      procedureSteps,
       updates:
         progressEnabled && updates.length > 0
           ? updates

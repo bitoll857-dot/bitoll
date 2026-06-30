@@ -177,6 +177,149 @@ export const ServiceForm = component$<Props>(({ admin }) => {
   );
 });
 
+export const SearchEntryForm = component$<Props>(({ admin }) => {
+  return (
+    <form preventdefault:submit class="space-y-3">
+      {admin.editingSearchEntryId.value && (
+        <p class="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-100">
+          A editar item da pesquisa
+        </p>
+      )}
+
+      <select
+        value={admin.searchEntryDraft.type}
+        class="h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-white outline-none"
+        onChange$={(event) => {
+          admin.searchEntryDraft.type = (
+            event.target as HTMLSelectElement
+          ).value as typeof admin.searchEntryDraft.type;
+        }}
+      >
+        <option value="service">Servico</option>
+        <option value="product">Artigo</option>
+        <option value="promotion">Promocao</option>
+        <option value="request">Solicitacao</option>
+      </select>
+
+      <input
+        value={admin.searchEntryDraft.title}
+        placeholder="Titulo que o cliente vai ver"
+        class="h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-white outline-none"
+        onInput$={(event) => {
+          admin.searchEntryDraft.title = (event.target as HTMLInputElement).value;
+        }}
+      />
+
+      <textarea
+        value={admin.searchEntryDraft.description}
+        placeholder="Descricao que aparece no resultado"
+        class="min-h-24 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-white outline-none"
+        onInput$={(event) => {
+          admin.searchEntryDraft.description = (
+            event.target as HTMLTextAreaElement
+          ).value;
+        }}
+      />
+
+      <div class="grid gap-3 md:grid-cols-2">
+        <input
+          value={admin.searchEntryDraft.category}
+          placeholder="Categoria"
+          class="h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-white outline-none"
+          onInput$={(event) => {
+            admin.searchEntryDraft.category = (
+              event.target as HTMLInputElement
+            ).value;
+          }}
+        />
+
+        <input
+          value={admin.searchEntryDraft.status}
+          placeholder="Estado"
+          class="h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-white outline-none"
+          onInput$={(event) => {
+            admin.searchEntryDraft.status = (
+              event.target as HTMLInputElement
+            ).value;
+          }}
+        />
+      </div>
+
+      <div class="grid gap-3 md:grid-cols-2">
+        <input
+          value={admin.searchEntryDraft.relatedService}
+          placeholder="Servico relacionado ou palavras-chave"
+          class="h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-white outline-none"
+          onInput$={(event) => {
+            admin.searchEntryDraft.relatedService = (
+              event.target as HTMLInputElement
+            ).value;
+          }}
+        />
+
+        <input
+          value={admin.searchEntryDraft.sortOrder}
+          type="number"
+          min="0"
+          placeholder="Ordem"
+          class="h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-white outline-none"
+          onInput$={(event) => {
+            admin.searchEntryDraft.sortOrder = Number(
+              (event.target as HTMLInputElement).value,
+            );
+          }}
+        />
+      </div>
+
+      <input
+        value={admin.searchEntryDraft.price}
+        type="number"
+        min="0"
+        placeholder="Preco opcional"
+        class="h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-white outline-none"
+        onInput$={(event) => {
+          admin.searchEntryDraft.price = Number(
+            (event.target as HTMLInputElement).value,
+          );
+        }}
+      />
+
+      <label class="flex items-center gap-2 text-sm text-slate-300">
+        <input
+          checked={admin.searchEntryDraft.active}
+          type="checkbox"
+          onChange$={(event) => {
+            admin.searchEntryDraft.active = (
+              event.target as HTMLInputElement
+            ).checked;
+          }}
+        />
+        Aparece na pesquisa do cliente
+      </label>
+
+      <button
+        type="submit"
+        class="w-full rounded-xl bg-cyan-400 px-4 py-3 text-sm font-black text-slate-950"
+        onClick$={admin.saveSearchEntry$}
+      >
+        {admin.editingSearchEntryId.value
+          ? "Atualizar item da pesquisa"
+          : "Guardar item da pesquisa"}
+      </button>
+
+      {admin.editingSearchEntryId.value && (
+        <button
+          type="button"
+          class="w-full rounded-xl border border-slate-700 px-4 py-3 text-sm font-bold text-slate-200"
+          onClick$={admin.resetSearchEntryDraft$}
+        >
+          Cancelar edicao
+        </button>
+      )}
+    </form>
+  );
+});
+
 export const StructureOptionForm = component$<Props>(({ admin }) => {
   const existingStructure = admin.ownerStructureOptions.value.find(
     (option) =>

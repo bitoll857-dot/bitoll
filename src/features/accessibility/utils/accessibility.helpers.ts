@@ -16,6 +16,7 @@ const contrastModes: ContrastMode[] = [
   "red",
   "gray",
   "white",
+  "elegant-light",
   "dark-high",
   "light-high",
   "reading",

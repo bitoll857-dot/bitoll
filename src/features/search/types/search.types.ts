@@ -12,6 +12,7 @@ export type SearchResult = {
   description: string;
 
   category?: string;
+  imageUrl?: string;
   status?: string;
   price?: number;
 
